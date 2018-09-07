@@ -32,10 +32,10 @@ void $LIB_NAME::Config::unsetAlias(char const *aliasName);
 void $LIB_NAME::Config::removeSetting(char const *name);
 ```
 
-It is also possible to apply all settings from another `$LIB_NAME::Config`
+It is also possible to inherit from another `$LIB_NAME::Config`
 
 ```cpp
-void $LIB_NAME::Config::importConfig($LIB_NAME::Config config);
+void $LIB_NAME::Config::inheritFrom($LIB_NAME::Config config);
 ```
 
 A freshly created config only imports the global configuration of the OS.
