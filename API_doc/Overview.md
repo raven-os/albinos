@@ -24,7 +24,7 @@ Using the above functions it's possible for an application to persistently use o
 A configuration is represented by a series of instructions.
 The most basic instruction is a setting, which can alias another setting.
 You can also unset an alias or remove an existing setting.
-
+If a setting is already set, it is overridden.
 ```cpp
 void $LIB_NAME::Config::addSetting(char const *name, char const *value);
 void $LIB_NAME::Config::addSettingAlias(char const *name, char const *aliasName);
