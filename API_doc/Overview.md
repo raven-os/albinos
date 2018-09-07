@@ -72,6 +72,7 @@ void loadConfig(XXX &&volumeHandler)
     config = $LIB_NAME::createConfig("My super music app");
     // since config automaticly inherits from the global config, we can go ahead and retreive another config
     char const *musicConfigKeyPath = nullptr;
+    config.addSetting("Music directory", "."); // default to current directory
     config.subscribeToSetting("Music specific config",
                               [&musicConfigKeyPath](char const * newValue)
                               {
@@ -81,5 +82,9 @@ void loadConfig(XXX &&volumeHandler)
     store(id); // store the id to be able to retrieve this config in the future;
   }
   config.subscribeToSetting("Music volume", volumeHandler);
+  config.subscribeToSetting("Music directory", directoryHandler);
 }
 ```
+In this example, `volumeHandler` will recieve all config updates from the included config, unless the included config has no "Music volume" in which case it will recieve modifications from the global config. If this last one does not include such a setting either, then `volumeHandler` will never be called.
+
+`directoryHandler` will recieve all config updates from the included config, unless the included config has no "Music directory" in which case it will recieve '.', which is the setting set before it's inclusion.
