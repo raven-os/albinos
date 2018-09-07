@@ -32,10 +32,10 @@ void $LIB_NAME::Config::unsetAlias(char const *aliasName);
 void $LIB_NAME::Config::removeSetting(char const *name);
 ```
 
-It is also possible to inherit from another `$LIB_NAME::Config`
+It is also possible to apply all settings from another `$LIB_NAME::Config`
 
 ```cpp
-void $LIB_NAME::Config::inheritFrom($LIB_NAME::Config config);
+void $LIB_NAME::Config::include($LIB_NAME::Config config);
 ```
 
 A freshly created config only imports the global configuration of the OS.
@@ -44,7 +44,8 @@ A freshly created config only imports the global configuration of the OS.
 
 Retrieving a value is simply done calling this function:
 ```cpp
-void $LIB_NAME::Config::subscribeToSetting(char const *name, void *data, void (*onChange)(void *data, char const *newValue));
+$LIB_NAME::Subscription $LIB_NAME::Config::subscribeToSetting(char const *name, void *data, void (*onChange)(void *data, char const *newValue));
+void $LIB_NAME::Subscription::unsubscribe();
 ```
 `onChange` will imediatly be called with the current setting's value, and will called each time the value of the setting changes.
 `data` can be used to pass user data.
@@ -54,8 +55,36 @@ void $LIB_NAME::Config::subscribeToSetting(char const *name, void *data, void (*
 A convenient more C++ friendly templated function is provided to subscribe to a setting
 ```cpp
 template<class Func>
-void $LIB_NAME::Config::subscribeToSetting(char const *name, Func &&func);
+$LIB_NAME::Subscription $LIB_NAME::Config::subscribeToSetting(char const *name, Func &&func);
 ```
 # TODO:
 - config removal / modification (currently one can only add, which is enough but may not be very expressive)
 - config backup / undo
+
+# Example
+```cpp
+void loadConfig(XXX &&volumeHandler)
+{
+  $LIB_NAME::Id id{nullptr, 0};
+  $LIB_NAME::Config config;
+  if (!loadKey(&id))
+  {
+    config = $LIB_NAME::createConfig("My super music app");
+    // since config automaticly inherits from the global config, we can go ahead and retreive another config
+    char const *musicConfigKeyPath = nullptr;
+    config.addSetting("Music directory", "."); // default to current directory
+    config.subscribeToSetting("Music specific config",
+                              [&musicConfigKeyPath](char const * newValue)
+                              {
+                                musicConfigKeyPath = newValue;
+                              }).unsubscribe();
+    config.include($LIB_NAME::loadConfig(readConfigIdFromFile(musicConfigKeyPath)));
+    store(id); // store the id to be able to retrieve this config in the future;
+  }
+  config.subscribeToSetting("Music volume", volumeHandler);
+  config.subscribeToSetting("Music directory", directoryHandler);
+}
+```
+In this example, `volumeHandler` will recieve all config updates from the included config, unless the included config has no "Music volume" in which case it will recieve modifications from the global config. If this last one does not include such a setting either, then `volumeHandler` will never be called.
+
+`directoryHandler` will recieve all config updates from the included config, unless the included config has no "Music directory" in which case it will recieve '.', which is the setting set before it's inclusion.
