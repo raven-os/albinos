@@ -77,7 +77,7 @@ void loadConfig(XXX &&volumeHandler)
                               {
                                 musicConfigKeyPath = newValue;
                               }).unsubscribe();
-    config.includeConfig($LIB_NAME::loadConfig(readConfigIdFromFile(musicConfigKeyPath)));
+    config.include($LIB_NAME::loadConfig(readConfigIdFromFile(musicConfigKeyPath)));
     store(id); // store the id to be able to retrieve this config in the future;
   }
   config.subscribeToSetting("Music volume", volumeHandler);
