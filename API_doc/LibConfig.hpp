@@ -1,16 +1,10 @@
-//
-// Must be included to use the LibConfig
-//
-//
-
 #pragma once
 
 # include <cstddef>
+# include "APILibConfig.h"
 
 namespace LibConfig
 {
-
-  using onChangeNotifier = void (*)(void *data, char const *newValue);
 
   /*
    * contain a unique id for each configuration
@@ -23,8 +17,9 @@ namespace LibConfig
   /*
    * manage your subscriptions
    */
-  class Subscription
+  struct Subscription
   {
+  private:
     onChangeNotifier subscribedFunc;
   public:
 
@@ -36,9 +31,9 @@ namespace LibConfig
   /*
    * Config class is used to manipulate configuration
    */
-  class Config
+  struct Config
   {
-
+  private:
     Id configId;
 
   public:
@@ -54,7 +49,4 @@ namespace LibConfig
 
     Subscription subscribeToSetting(char const *name, void *data, onChangeNotifier onChange); // be notifier when a setting change
   };
-
-  Config createConfig(char const *configName); // create a config with the given name
-  Config getConfig(Id id); // get config from id
 }
