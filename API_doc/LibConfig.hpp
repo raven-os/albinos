@@ -1,18 +1,9 @@
 #pragma once
 
-# include <cstddef>
 # include "APILibConfig.h"
 
 namespace LibConfig
 {
-
-  /*
-   * contain a unique id for each configuration
-   */
-  struct Id {
-    void *data;
-    size_t size;
-  };
 
   /*
    * manage your subscriptions
