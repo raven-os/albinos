@@ -7,13 +7,8 @@
 
 # include <cstddef>
 
-/*
- * Base class for all operations
- */
-class LibConfig
+namespace LibConfig
 {
-
-public:
 
   using onChangeNotifier = void (*)(void *data, char const *newValue);
 
@@ -60,6 +55,6 @@ public:
     Subscription subscribeToSetting(char const *name, void *data, onChangeNotifier onChange); // be notifier when a setting change
   };
 
-  static Config createConfig(char const *configName); // create a config with the given name
-  static Config getConfig(Id id); // get config from id
-};
+  Config createConfig(char const *configName); // create a config with the given name
+  Config getConfig(Id id); // get config from id
+}
