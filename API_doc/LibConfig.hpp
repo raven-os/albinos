@@ -48,7 +48,7 @@ public:
 
   public:
 
-    Id const &getId() const;
+    Id getId() const;
 
     bool addSetting(char const *name, char const *value); // basic operation to add a new setting
     bool addSettingAlias(char const *name, char const *aliasName); // set alias for given setting
