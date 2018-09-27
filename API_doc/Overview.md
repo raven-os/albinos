@@ -13,7 +13,7 @@ struct $LIB_NAME::Id
   size_t size; // size of data
 };
 
-$LIB_NAME::Id $LIB_NAME::Config::getId();
+$LIB_NAME::Id $LIB_NAME::getConfigId($LIB_NAME::Config const* config);
 $LIB_NAME::Config $LIB_NAME::getConfig($LIB_NAME::Id id);
 ```
 
@@ -26,26 +26,29 @@ The most basic instruction is a setting, which can alias another setting.
 You can also unset an alias or remove an existing setting.
 If a setting is already set, it is overridden.
 ```cpp
-void $LIB_NAME::Config::addSetting(char const *name, char const *value);
-void $LIB_NAME::Config::addSettingAlias(char const *name, char const *aliasName);
-void $LIB_NAME::Config::unsetAlias(char const *aliasName);
-void $LIB_NAME::Config::removeSetting(char const *name);
+void $LIB_NAME::addSetting($LIB_NAME::Config *config, char const *name, char const *value);
+void $LIB_NAME::addSettingAlias($LIB_NAME::Config *config, char const *name, char const *aliasName);
+void $LIB_NAME::unsetAlias($LIB_NAME::Config *config, char const *aliasName);
+void $LIB_NAME::removeSetting($LIB_NAME::Config *config, char const *name);
 ```
 
 It is also possible to apply all settings from another `$LIB_NAME::Config`
 
 ```cpp
-void $LIB_NAME::Config::include($LIB_NAME::Config config);
+void $LIB_NAME::include($LIB_NAME::Config *config, $LIB_NAME::Config const *inheritFrom);
 ```
 
 A freshly created config only imports the global configuration of the OS.
 
 # Subscribing to a setting
 
-Retrieving a value is simply done calling this function:
 ```cpp
-$LIB_NAME::Subscription $LIB_NAME::Config::subscribeToSetting(char const *name, void *data, void (*onChange)(void *data, char const *newValue));
-void $LIB_NAME::Subscription::unsubscribe();
+
+typedef void (*onChangeNotifier)(void *data, char const *newValue);
+
+// Retrieving a value is simply done calling this function:
+$LIB_NAME::Subscription $LIB_NAME::subscribeToSetting($LIB_NAME::Config *config, char const *name, void *data, $LIB_NAME::onChangeNotifier onChange);
+void $LIB_NAME::unsubscribe($LIB_NAME::Subscription *subscription);
 ```
 `onChange` will imediatly be called with the current setting's value, and will called each time the value of the setting changes.
 `data` can be used to pass user data.
@@ -72,17 +75,17 @@ void loadConfig(XXX &&volumeHandler)
     config = $LIB_NAME::createConfig("My super music app");
     // since config automaticly inherits from the global config, we can go ahead and retreive another config
     char const *musicConfigKeyPath = nullptr;
-    config.addSetting("Music directory", "."); // default to current directory
-    config.subscribeToSetting("Music specific config",
-                              [&musicConfigKeyPath](char const * newValue)
+    $LIB_NAME::addSetting(config, "Music directory", "."); // default to current directory
+    $LIB_NAME::subscribeToSetting(config, "Music specific config", nullptr,
+                              [&musicConfigKeyPath](void*, char const * newValue)
                               {
                                 musicConfigKeyPath = newValue;
-                              }).unsubscribe();
-    config.include($LIB_NAME::loadConfig(readConfigIdFromFile(musicConfigKeyPath)));
+                              });
+    $LIB_NAME::include(config, $LIB_NAME::loadConfig(readConfigIdFromFile(musicConfigKeyPath)));
     store(id); // store the id to be able to retrieve this config in the future;
   }
-  config.subscribeToSetting("Music volume", volumeHandler);
-  config.subscribeToSetting("Music directory", directoryHandler);
+  subscribeToSetting(config, "Music volume", volumeHandler);
+  subscribeToSetting(config, "Music directory", directoryHandler);
 }
 ```
 In this example, `volumeHandler` will recieve all config updates from the included config, unless the included config has no "Music volume" in which case it will recieve modifications from the global config. If this last one does not include such a setting either, then `volumeHandler` will never be called.
