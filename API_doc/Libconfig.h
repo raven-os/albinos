@@ -14,25 +14,26 @@ namespace LibConfig
 
   typedef void (*FCPTR_ON_CHANGE_NOTIFIER)(void *data, char const *newValue);
 
-  /*
-   * contain a unique id for each configuration
-   * 'size' is the size of 'data' in bytes
-   */
+  ///
+  /// \brief contain a unique id for each configuration
+  ///
+  /// \param 'size' is the size of 'data' in bytes
+  ///
   struct Id {
     void *data;
     size_t size;
   };
 
-  /*
-   * manage your subscriptions
-   */
+  ///
+  /// \brief manage your subscriptions
+  ///
   struct Subscription;
 
   int unsubscribe(struct Subscription*);
 
-  /*
-   * Config class is used to manipulate configuration
-   */
+  ///
+  /// \brief Config class is used to manipulate configuration
+  ///
   struct Config;
 
   int createConfig(char const *configName, struct Config **returnedConfig); // create a config with the given name
