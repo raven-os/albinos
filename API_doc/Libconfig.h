@@ -35,6 +35,10 @@ namespace LibConfig
    */
   struct Config;
 
+  int createConfig(char const *configName, struct Config **returnedConfig); // create a config with the given name
+  int getConfig(struct Id const* id, struct Config **returnedConfig); // get config from id
+  int getReadOnlyConfig(struct Id const* id, struct Config const **returnedConfig); // get const config from id
+
   int getConfigId(struct Config const *, struct Id ** configId);
 
   int addSetting(struct Config*, char const *name, char const *value); // basic operation to add a new setting
@@ -47,9 +51,6 @@ namespace LibConfig
   int include(struct Config *config, struct Config const *inheritFrom); // inherit from another config
 
   int subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, struct Subscription **); // be notifier when a setting change
-
-  int createConfig(char const *configName, struct Config **returnedConfig); // create a config with the given name
-  int getConfig(struct Id const* id, struct Config **returnedConfig); // get config from id
 
 #ifdef _cplusplus
 }
