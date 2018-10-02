@@ -11,10 +11,10 @@ namespace LibConfig
   struct Subscription
   {
   private:
-    onChangeNotifier subscribedFunc;
+    FCPTR_ON_CHANGE_NOTIFIER subscribedFunc;
   public:
 
-    Subscription(onChangeNotifier);
+    Subscription(FCPTR_ON_CHANGE_NOTIFIER);
 
     void unsubscribe(); // stop your subscription
   };
@@ -38,6 +38,6 @@ namespace LibConfig
 
     void include(Config const &config); // inherit from another config
 
-    Subscription subscribeToSetting(char const *name, void *data, onChangeNotifier onChange); // be notifier when a setting change
+    Subscription subscribeToSetting(char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange); // be notifier when a setting change
   };
 }

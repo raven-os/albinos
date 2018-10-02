@@ -12,10 +12,11 @@ namespace LibConfig
 {
 #endif
 
-  typedef void (*onChangeNotifier)(void *data, char const *newValue);
+  typedef void (*FCPTR_ON_CHANGE_NOTIFIER)(void *data, char const *newValue);
 
   /*
    * contain a unique id for each configuration
+   * 'size' is the size of 'data' in bytes
    */
   struct Id {
     void *data;
@@ -43,7 +44,7 @@ namespace LibConfig
 
   void include(struct Config *config, struct Config const *inheriftFrom); // inherit from another config
 
-  struct Subscription subscribeToSetting(struct Config*, char const *name, void *data, onChangeNotifier onChange); // be notifier when a setting change
+  struct Subscription subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange); // be notifier when a setting change
 
   struct Config createConfig(char const *configName); // create a config with the given name
   struct Config getConfig(struct Id id); // get config from id
