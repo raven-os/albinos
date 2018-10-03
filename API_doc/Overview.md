@@ -4,7 +4,10 @@
 
 The first call to $LIB_NAME config is to create a new config giving it a name
 ```c
-struct Config awesomeConfig = createConfig("My awesome config");
+
+struct Config *awesomeConfig;
+
+createConfig("My awesome config", &awesomeConfig);
 ```
 or to retrieve it giving the previously stored id.
 
@@ -13,11 +16,12 @@ or to retrieve it giving the previously stored id.
 ...
 
 // get config back with retrieved id
-struct Config awesomeConfig = getConfig(myConfigId);
+getConfig(myConfigId, &awesomeConfig);
 ```
 If your config is new, you can store its id allowing you to retrieve it later :
 ```c
-struct Id myConfigId = getConfigId(&awesomeConfig);
+struct Id *myConfigId;
+getConfigId(awesomeConfig, &myConfigId);
 
 // you have to keep the id by your side
 myStorageFunc(myConfigId);
@@ -32,32 +36,43 @@ The most basic instruction is a setting, which can alias another setting.
 You can also unset an alias or remove an existing setting.
 If a setting is already set, it is overridden.
 ```c
-struct Config awesomeConfig = createConfig("My awesome config");
+struct Config *awesomeConfig;
+createConfig("My awesome config", &awesomeConfig);
 
 // add a setting
-addSetting(&awesomeConfig, "my setting name", "my setting value");
+setSetting(awesomeConfig, "my setting name", "my setting value");
 
 // make an alias for the previously defined setting
-addSettingAlias(&awesomeConfig, "my setting name", "new alias");
+setSettingAlias(awesomeConfig, "my setting name", "new alias");
 
 // unset a defined alias
-unsetAlias(&awesomeConfig, "new alias");
+unsetAlias(awesomeConfig, "new alias");
 
 // remove a setting
-removeSetting(&awesomeConfig, "my setting name");
+removeSetting(awesomeConfig, "my setting name");
 ```
 
 It is also possible to apply all settings from another `Config`
 
 ```c
-struct Config awesomeConfig = createConfig("My awesome config");
+struct Config *awesomeConfig;
 
-include(&awesomeConfig, anotherConfig);
+createConfig("My awesome config", &awesomeConfig);
+include(awesomeConfig, anotherConfig);
 ```
 
 A freshly created config only imports the global configuration of the OS.
 
-# Subscribing to a setting
+# Read and look after a setting
+
+If you have to retrieve a setting, you can simply get it.
+```c
+char *mySettingValue;
+
+getSettingValue(awesomeConfig, "my setting name", &mySettingValue);
+```
+
+You can also subscribe to a setting to be notified on change.
 
 ```c
 void beNotified(void *data, char const *newValue)
@@ -68,11 +83,12 @@ void beNotified(void *data, char const *newValue)
 ...
 
 // I want to be notified when "my setting name" from 'awesomeConfig' is modified
-struct Subscription manageSub = subscribeToSetting(&awesomeConfig, "my setting name", &data, &beNotified);
+struct Subscription *manageSub;
+subscribeToSetting(awesomeConfig, "my setting name", &data, &beNotified, &manageSub);
 
 ...
 // I don't need to be notified anymore
-unsubscribe(&manageSub);
+unsubscribe(manageSub);
 ```
 
 # Convenience functions (C++)
@@ -85,31 +101,3 @@ $LIB_NAME::Subscription $LIB_NAME::Config::subscribeToSetting(char const *name, 
 # TODO:
 - config removal / modification (currently one can only add, which is enough but may not be very expressive)
 - config backup / undo
-
-# Example
-```cpp
-void loadConfig(XXX &&volumeHandler)
-{
-  $LIB_NAME::Id id{nullptr, 0};
-  $LIB_NAME::Config config;
-  if (!loadKey(&id))
-  {
-    config = $LIB_NAME::createConfig("My super music app");
-    // since config automaticly inherits from the global config, we can go ahead and retreive another config
-    char const *musicConfigKeyPath = nullptr;
-    $LIB_NAME::addSetting(&config, "Music directory", "."); // default to current directory
-    $LIB_NAME::subscribeToSetting(&config, "Music specific config", nullptr,
-                              [&musicConfigKeyPath](void*, char const * newValue)
-                              {
-                                musicConfigKeyPath = newValue;
-                              });
-    $LIB_NAME::include(&config, $LIB_NAME::loadConfig(readConfigIdFromFile(musicConfigKeyPath)));
-    store(id); // store the id to be able to retrieve this config in the future;
-  }
-  subscribeToSetting(&config, "Music volume", volumeHandler);
-  subscribeToSetting(&config, "Music directory", directoryHandler);
-}
-```
-In this example, `volumeHandler` will recieve all config updates from the included config, unless the included config has no "Music volume" in which case it will recieve modifications from the global config. If this last one does not include such a setting either, then `volumeHandler` will never be called.
-
-`directoryHandler` will recieve all config updates from the included config, unless the included config has no "Music directory" in which case it will recieve '.', which is the setting set before it's inclusion.
