@@ -12,22 +12,19 @@ createConfig("My awesome config", &awesomeConfig);
 or to retrieve it giving the previously stored id.
 
 ```c
-// retrieve your config id by your storage
-...
-
-// get config back with retrieved id
+// get config from an id
 getConfig(myConfigId, &awesomeConfig);
 ```
-If your config is new, you can store its id allowing you to retrieve it later :
+If the config is new, one can store it's id allowing it to be retrieve it later
 ```c
 struct Id *myConfigId;
 getConfigId(awesomeConfig, &myConfigId);
 
-// you have to keep the id by your side
+// id's have to be stored by the application
 myStorageFunc(myConfigId);
 ```
 
-At the end, don't forget to release you config
+To free the underlyong memory, call
 
 ```c
 releaseConfig(awesomeConfig);
@@ -39,7 +36,7 @@ Using the above functions it's possible for an application to persistently use o
 
 A configuration is represented by a series of instructions.
 The most basic instruction is a setting, which can alias another setting.
-You can also unset an alias or remove an existing setting.
+It's also possible to unset an alias or remove an existing setting.
 If a setting is already set, it is overridden.
 ```c
 struct Config *awesomeConfig;
@@ -71,19 +68,7 @@ A freshly created config only imports the global configuration of the OS.
 
 # Read and look after a setting
 
-If you have to retrieve a setting, you can simply get it.
-```c
-char *mySettingValue;
-size_t size;
-
-// get the size
-getSettingSize(awesomeConfig, "my setting name", &size);
-
-if ((mySettingValue = malloc(size * sizeof(char))))
-  getSettingValue(awesomeConfig, "my setting name", mySettingValue, size);
-```
-
-You can also subscribe to a setting to be notified on change.
+To get a setting's value, one must subscribe to it.
 
 ```c
 void beNotified(void *data, char const *newValue)
@@ -93,13 +78,25 @@ void beNotified(void *data, char const *newValue)
 
 ...
 
-// I want to be notified when "my setting name" from 'awesomeConfig' is modified
+// be notified when "my setting name" from 'awesomeConfig' is modified
 struct Subscription *manageSub;
 subscribeToSetting(awesomeConfig, "my setting name", &data, &beNotified, &manageSub);
 
 ...
-// I don't need to be notified anymore
+// stop being notified
 unsubscribe(manageSub);
+```
+
+Some settings are rarely used (such as an application's default template), in that case it is possible to read a setting without subscribing to it:
+```c
+char *mySettingValue;
+size_t size;
+
+// get the size
+getSettingSize(awesomeConfig, "my setting name", &size);
+
+if ((mySettingValue = malloc(size * sizeof(char))))
+  getSettingValue(awesomeConfig, "my setting name", mySettingValue, size);
 ```
 
 # Convenience functions (C++)
