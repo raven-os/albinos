@@ -104,7 +104,7 @@ namespace LibConfig
   /// \param 'aliasName' alias name
   /// \return error code
   ///
-  int addSettingAlias(struct Config*, char const *name, char const *aliasName);
+  int setSettingAlias(struct Config*, char const *name, char const *aliasName);
 
   ///
   /// \brief unset the given alias
