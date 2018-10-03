@@ -81,12 +81,19 @@ namespace LibConfig
   int getReadOnlyConfig(struct Id const* id, struct Config const **returnedConfig);
 
   ///
-  /// \brief get the id of the given config
+  /// \brief release the config. Must be call when config is not needed anymore
   /// \param the config
-  /// \param 'configId' if the func success, contain a pointer to a new 'struct Id' containing the config id
   /// \return error code
   ///
-  int getConfigId(struct Config const *, struct Id ** configId);
+  int releaseConfig(struct Config const *);
+
+  ///
+  /// \brief get the id of the given config
+  /// \param the config
+  /// \param 'configId' if the func success, contain the config id
+  /// \return error code
+  ///
+  int getConfigId(struct Config const *, struct Id *configId);
 
   ///
   /// \brief basic operation to add a new setting or modify an existing one
@@ -126,10 +133,20 @@ namespace LibConfig
   /// \brief get the setting's value
   /// \param the config
   /// \param 'settingName' setting name
-  /// \param 'value' the value
+  /// \param 'value' if NULL, the value's size will be stored in 'valueSize', else setting value will be wrote here without exceeding 'valueSize' bytes
+  /// \param 'valueSize' if 'value' is NULL, the value's size will be stored here, else, must contain the size of the buffer pointed by 'value'
   /// \return error code
   ///
-  int getSettingValue(struct Config const*, char const *settingName, char **value);
+  int getSettingValue(struct Config const*, char const *settingName, char *value, size_t *valueSize);
+
+  ///
+  /// \brief get the size of the setting's value
+  /// \param the config
+  /// \param 'settingName' setting name
+  /// \param 'size' size of the setting's value
+  /// \return error code
+  ///
+  int getSettingSize(struct Config const*, char const *settingName, size_t *value);
 
   ///
   /// \brief inherit from another config
