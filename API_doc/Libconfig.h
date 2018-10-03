@@ -83,9 +83,8 @@ namespace LibConfig
   ///
   /// \brief release the config. Must be call when config is not needed anymore
   /// \param the config
-  /// \return error code
   ///
-  int releaseConfig(struct Config const *);
+  void releaseConfig(struct Config const *);
 
   ///
   /// \brief get the id of the given config
@@ -133,11 +132,11 @@ namespace LibConfig
   /// \brief get the setting's value
   /// \param the config
   /// \param 'settingName' setting name
-  /// \param 'value' if NULL, the value's size will be stored in 'valueSize', else setting value will be wrote here without exceeding 'valueSize' bytes
-  /// \param 'valueSize' if 'value' is NULL, the value's size will be stored here, else, must contain the size of the buffer pointed by 'value'
+  /// \param 'value' setting value will be wrote here without exceeding 'valueSize' bytes
+  /// \param 'valueSize' must contain the size of the buffer pointed by 'value'
   /// \return error code
   ///
-  int getSettingValue(struct Config const*, char const *settingName, char *value, size_t *valueSize);
+  int getSettingValue(struct Config const*, char const *settingName, char *value, size_t valueSize);
 
   ///
   /// \brief get the size of the setting's value
