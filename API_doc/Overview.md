@@ -77,7 +77,7 @@ char *mySettingValue;
 size_t size;
 
 // get the size
-getSettingValue(awesomeConfig, "my setting name", NULL, &size);
+getSettingSize(awesomeConfig, "my setting name", &size);
 
 if ((mySettingValue = malloc(size * sizeof(char))))
   getSettingValue(awesomeConfig, "my setting name", mySettingValue, size);
