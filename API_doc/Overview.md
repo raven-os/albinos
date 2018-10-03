@@ -27,6 +27,12 @@ getConfigId(awesomeConfig, &myConfigId);
 myStorageFunc(myConfigId);
 ```
 
+At the end, don't forget to release you config
+
+```c
+releaseConfig(awesomeConfig);
+```
+
 Using the above functions it's possible for an application to persistently use one configuration once it has been created.
 
 # Modifying a configuration
@@ -68,8 +74,13 @@ A freshly created config only imports the global configuration of the OS.
 If you have to retrieve a setting, you can simply get it.
 ```c
 char *mySettingValue;
+size_t size;
 
-getSettingValue(awesomeConfig, "my setting name", &mySettingValue);
+// get the size
+getSettingValue(awesomeConfig, "my setting name", NULL, &size);
+
+if ((mySettingValue = malloc(size * sizeof(char))))
+  getSettingValue(awesomeConfig, "my setting name", mySettingValue, size);
 ```
 
 You can also subscribe to a setting to be notified on change.
