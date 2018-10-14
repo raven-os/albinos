@@ -23,6 +23,10 @@ endif ()
 file(GLOB_RECURSE SOURCES_SERVICE service/*.cpp)
 file(GLOB_RECURSE SOURCES_LIB lib/*.cpp)
 
+add_subdirectory(vendor/uvw)
+
 add_executable(service ${SOURCES_SERVICE})
+target_link_libraries(service PUBLIC uv_a)
+target_include_directories(service PUBLIC vendor/uvw/src vendor/uvw/deps/libuv/include)
 add_library(config SHARED ${SOURCES_LIB})
 add_subdirectory(tests)
