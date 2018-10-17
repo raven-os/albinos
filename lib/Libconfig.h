@@ -6,6 +6,7 @@
 #pragma once
 
 # include <stddef.h>
+# include "ReturnedValue.h"
 
 #ifdef _cplusplus
 namespace LibConfig
@@ -41,9 +42,8 @@ namespace LibConfig
   ///
   /// \brief unsubscribe
   /// \param the subscription to unsubscribe from
-  /// \return error code
   ///
-  int unsubscribe(struct Subscription*);
+  void unsubscribe(struct Subscription*);
 
   ///
   ///
@@ -62,7 +62,7 @@ namespace LibConfig
   /// \param 'returnedConfig' if the function succeeds, a pointer is written to a new 'struct Config'
   /// \return error code
   ///
-  int createConfig(char const *configName, struct Config **returnedConfig);
+  enum ReturnedValue createConfig(char const *configName, struct Config **returnedConfig);
 
   ///
   /// \brief get config from id
@@ -70,7 +70,7 @@ namespace LibConfig
   /// \param 'returnedConfig' if the function succeeds, a pointer is written to a new 'struct Config'
   /// \return error code
   ///
-  int getConfig(struct Id const* id, struct Config **returnedConfig);
+  enum ReturnedValue getConfig(struct Id const* id, struct Config **returnedConfig);
 
   ///
   /// \brief get const config from id
@@ -78,7 +78,7 @@ namespace LibConfig
   /// \param 'returnedConfig' if the function succeeds, a pointer is written to a new 'struct Config'
   /// \return error code
   ///
-  int getReadOnlyConfig(struct Id const* id, struct Config const **returnedConfig);
+  enum ReturnedValue getReadOnlyConfig(struct Id const* id, struct Config const **returnedConfig);
 
   ///
   /// \brief release the config, freeing the underlying memory
@@ -94,7 +94,7 @@ namespace LibConfig
   /// \param 'configId' if the function succeeds, contain the config id
   /// \return error code
   ///
-  int getConfigId(struct Config const *, struct Id *configId);
+  enum ReturnedValue getConfigId(struct Config const *, struct Id *configId);
 
   ///
   /// \brief basic operation to add a new setting or modify an existing one
@@ -103,7 +103,7 @@ namespace LibConfig
   /// \param 'value' new setting value
   /// \return error code
   ///
-  int setSetting(struct Config*, char const *name, char const *value);
+  enum ReturnedValue setSetting(struct Config*, char const *name, char const *value);
 
   ///
   /// \brief set or modify an alias
@@ -112,7 +112,7 @@ namespace LibConfig
   /// \param 'aliasName' alias name
   /// \return error code
   ///
-  int setSettingAlias(struct Config*, char const *name, char const *aliasName);
+  enum ReturnedValue setSettingAlias(struct Config*, char const *name, char const *aliasName);
 
   ///
   /// \brief unset the given alias
@@ -120,7 +120,7 @@ namespace LibConfig
   /// \param 'aliasName' alias name
   /// \return error code
   ///
-  int unsetAlias(struct Config*, char const *aliasName);
+  enum ReturnedValue unsetAlias(struct Config*, char const *aliasName);
 
   ///
   /// \brief remove the given setting
@@ -128,7 +128,7 @@ namespace LibConfig
   /// \param 'name' setting name
   /// \return error code
   ///
-  int removeSetting(struct Config*, char const *name);
+  enum ReturnedValue removeSetting(struct Config*, char const *name);
 
   ///
   /// \brief get the setting's value
@@ -138,7 +138,7 @@ namespace LibConfig
   /// \param 'valueSize' must contain the size of the buffer pointed by 'value'
   /// \return error code
   ///
-  int getSettingValue(struct Config const*, char const *settingName, char *value, size_t valueSize);
+  enum ReturnedValue getSettingValue(struct Config const*, char const *settingName, char *value, size_t valueSize);
 
   ///
   /// \brief get the size of the setting's value
@@ -147,7 +147,7 @@ namespace LibConfig
   /// \param 'size' size of the setting's value
   /// \return error code
   ///
-  int getSettingSize(struct Config const*, char const *settingName, size_t *value);
+  enum ReturnedValue getSettingSize(struct Config const*, char const *settingName, size_t *value);
 
   ///
   /// \brief inherit from another config
@@ -155,7 +155,7 @@ namespace LibConfig
   /// \param 'inheritFrom' the other config which will be included
   /// \return error code
   ///
-  int include(struct Config *config, struct Config const *inheritFrom);
+  enum ReturnedValue include(struct Config *config, struct Config const *inheritFrom);
 
   ///
   /// \brief be notified when a setting change
@@ -168,7 +168,7 @@ namespace LibConfig
   ///
   /// To stop the subscription, `unsubsribe` must be called.
   ///
-  int subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, struct Subscription **subscription);
+  enum ReturnedValue subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, struct Subscription **subscription);
 
 #ifdef _cplusplus
 }
