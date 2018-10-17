@@ -8,7 +8,7 @@
 # include <stddef.h>
 # include "ReturnedValue.h"
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 namespace LibConfig
 {
 #endif
@@ -147,7 +147,7 @@ namespace LibConfig
   /// \param 'size' size of the setting's value
   /// \return error code
   ///
-  enum ReturnedValue getSettingSize(struct Config const*, char const *settingName, size_t *value);
+  enum ReturnedValue getSettingSize(struct Config const*, char const *settingName, size_t *size);
 
   ///
   /// \brief inherit from another config
@@ -170,6 +170,6 @@ namespace LibConfig
   ///
   enum ReturnedValue subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, struct Subscription **subscription);
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
