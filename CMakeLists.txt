@@ -4,6 +4,7 @@ endif ()
 
 cmake_minimum_required(VERSION 3.9)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 17)
 
 ##! Project
 project(libconfig)
@@ -26,7 +27,8 @@ file(GLOB_RECURSE SOURCES_LIB lib/*.cpp)
 add_subdirectory(vendor/uvw)
 
 add_executable(service ${SOURCES_SERVICE})
-target_link_libraries(service PUBLIC uv_a)
+find_library(filesystem_lib NAMES stdc++fs)
+target_link_libraries(service PUBLIC uv_a ${filesystem_lib})
 target_include_directories(service PUBLIC vendor/uvw/src vendor/uvw/deps/libuv/include)
 add_library(config SHARED ${SOURCES_LIB})
 add_subdirectory(tests)
