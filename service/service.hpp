@@ -15,11 +15,11 @@ namespace raven
     public:
         service()
         {
-            server_->on<uvw::ErrorEvent>([](const auto &, auto &) { /* TODO: Fill it */ });
-            server_->on<uvw::ListenEvent>([](const uvw::ListenEvent &, uvw::PipeHandle &handle) {
+            server_->on<uvw::ErrorEvent>([](auto const &, auto &) { /* TODO: Fill it */ });
+            server_->on<uvw::ListenEvent>([](uvw::ListenEvent const &, uvw::PipeHandle &handle) {
                 std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
                 socket->once<uvw::CloseEvent>(
-                    [&handle](const uvw::CloseEvent &, uvw::PipeHandle &) { handle.close(); });
+                    [&handle](uvw::CloseEvent const &, uvw::PipeHandle &) { handle.close(); });
 
                 //! TODO: do more
             });
