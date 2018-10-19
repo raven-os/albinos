@@ -26,7 +26,7 @@ namespace raven
                         handle.close();
                     });
                 socket->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock) {
-                    std::cout << "end event receive" << std::endl;
+                    std::cout << "end event received" << std::endl;
                     sock.close();
                 });
 
