@@ -22,7 +22,7 @@ namespace raven
                 std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
                 socket->on<uvw::CloseEvent>(
                     [&handle](uvw::CloseEvent const &, uvw::PipeHandle &) {
-                        std::cout << "close event receive" << std::endl;
+                        std::cout << "close event received" << std::endl;
                         handle.close();
                     });
                 socket->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock) {
