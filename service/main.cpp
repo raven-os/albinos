@@ -3,7 +3,7 @@
 
 int main()
 {
-    raven::service service;
-    service.run();
-    return 0;
+  raven::service service;
+  service.run();
+  return 0;
 }
