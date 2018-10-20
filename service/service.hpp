@@ -21,7 +21,7 @@ namespace raven
         {
           config_create cfg;
           from_json(j, cfg);
-          std::cout << "json receive:\n" << std::setw(4) << j << std::endl;
+          std::cout << "json received:\n" << std::setw(4) << j << std::endl;
           std::cout << "cfg.config_name: " << cfg.config_name << std::endl;
           std::cout << "cfg.provider: " << cfg.provider << std::endl;
         }
