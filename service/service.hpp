@@ -4,37 +4,57 @@
 
 #pragma once
 
+#include <iomanip>
 #include <string_view>
 #include <iostream>
 #include <filesystem>
 #include <memory>
 #include <uvw.hpp>
+#include "protocol.hpp"
 
 namespace raven
 {
   class service
   {
   public:
+    void create_config(json::json &json_data)
+    {
+      config_create cfg;
+      from_json(json_data, cfg);
+      std::cout << "json receive:\n" << std::setw(4) << json_data << std::endl;
+      std::cout << "cfg.config_name: " << cfg.config_name << std::endl;
+      std::cout << "cfg.provider: " << cfg.provider << std::endl;
+    }
+
     service()
     {
       server_->on<uvw::ErrorEvent>([](auto const &, auto &) { /* TODO: Fill it */ });
-      server_->on<uvw::ListenEvent>([](uvw::ListenEvent const &, uvw::PipeHandle &handle) {
+      server_->on<uvw::ListenEvent>([this](uvw::ListenEvent const &, uvw::PipeHandle &handle) {
         std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
-        socket->on<uvw::CloseEvent>([&handle](uvw::CloseEvent const &, uvw::PipeHandle &) {
-          std::cout << "close event received" << std::endl;
-          handle.close();
-        });
+        socket->on<uvw::CloseEvent>([](uvw::CloseEvent const &, uvw::PipeHandle &) { std::cout << "socket closed." << std::endl; });
+
         socket->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock) {
           std::cout << "end event received" << std::endl;
           sock.close();
         });
 
-        socket->on<uvw::DataEvent>([](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+        socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+          static const std::unordered_map<std::string, std::function<void(json::json &)>>
+            order_registry{{"CONFIG_CREATE", [this](json::json &json_data) { this->create_config(json_data); }},
+                           {"CONFIG_LOAD", [this](json::json &json_data) { /* TODO: fill it */ }},
+                           {"CONFIG_UNLOAD", [this](json::json &json_data) { /* TODO: fill it */ }}};
+
           std::string_view data_str(data.data.get(), data.length);
-          std::cout << "data received: " << data_str;
-
-          //TODO: Treat the data here
-
+          try
+            {
+              auto json_data = json::json::parse(data_str);
+              std::string command_order = json_data.at("order").get<std::string>();
+              order_registry.at(command_order)(json_data);
+            }
+          catch (const json::json::exception &error)
+            {
+              std::cerr << "error in received data: " << error.what() << std::endl;
+            }
         });
 
         handle.accept(*socket);
