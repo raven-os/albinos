@@ -9,22 +9,18 @@
 
 namespace raven
 {
-    namespace json = nlohmann;
+  namespace json = nlohmann;
 
-    struct config_create
-    {
-        const std::string order{"CONFIG_CREATE"};
-        std::string config_name;
-        std::string provider;
-    };
+  struct config_create
+  {
+    const std::string order{"CONFIG_CREATE"};
+    std::string config_name;
+    std::string provider;
+  };
 
-    inline void from_json(const raven::json::json &json_data, config_create &cfg)
-    {
-      cfg.config_name = json_data.at("config").get<std::string>();
-      cfg.provider = json_data.at("provider").get<std::string>();
-    }
+  inline void from_json(const raven::json::json &json_data, config_create &cfg)
+  {
+    cfg.config_name = json_data.at("config").get<std::string>();
+    cfg.provider = json_data.at("provider").get<std::string>();
+  }
 }
-
-
-
-
