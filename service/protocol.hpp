@@ -18,10 +18,10 @@ namespace raven
         std::string provider;
     };
 
-    inline void from_json(const raven::json::json &j, config_create &cfg)
+    inline void from_json(const raven::json::json &json_data, config_create &cfg)
     {
-      cfg.config_name = j.at("config").get<std::string>();
-      cfg.provider = j.at("provider").get<std::string>();
+      cfg.config_name = json_data.at("config").get<std::string>();
+      cfg.provider = json_data.at("provider").get<std::string>();
     }
 }
 

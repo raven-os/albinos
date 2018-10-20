@@ -17,11 +17,11 @@ namespace raven
     class service
     {
     public:
-        void create_config(json::json &j)
+        void create_config(json::json &json_data)
         {
           config_create cfg;
-          from_json(j, cfg);
-          std::cout << "json receive:\n" << std::setw(4) << j << std::endl;
+          from_json(json_data, cfg);
+          std::cout << "json receive:\n" << std::setw(4) << json_data << std::endl;
           std::cout << "cfg.config_name: " << cfg.config_name << std::endl;
           std::cout << "cfg.provider: " << cfg.provider << std::endl;
         }
@@ -43,16 +43,16 @@ namespace raven
               socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
 
                   static const std::unordered_map<std::string, std::function<void(json::json &)>> order_registry{
-                      {"CONFIG_CREATE", [this](json::json &j) { this->create_config(j); }},
-                      {"CONFIG_LOAD",   [this](json::json &j) {/* TODO: fill it */}},
-                      {"CONFIG_UNLOAD", [this](json::json &j) {/* TODO: fill it */}}
+                      {"CONFIG_CREATE", [this](json::json &json_data) { this->create_config(json_data); }},
+                      {"CONFIG_LOAD",   [this](json::json &json_data) {/* TODO: fill it */}},
+                      {"CONFIG_UNLOAD", [this](json::json &json_data) {/* TODO: fill it */}}
                   };
 
                   std::string_view data_str(data.data.get(), data.length);
                   try {
-                    auto j = json::json::parse(data_str);
-                    std::string command_order = j.at("order").get<std::string>();
-                    order_registry.at(command_order)(j);
+                    auto json_data = json::json::parse(data_str);
+                    std::string command_order = json_data.at("order").get<std::string>();
+                    order_registry.at(command_order)(json_data);
                   }
                   catch (const json::json::exception &error) {
                     std::cerr << "error in received data: " << error.what() << std::endl;
