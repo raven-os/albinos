@@ -5,33 +5,36 @@ void LibConfig::unsubscribe(Subscription *sub)
   delete sub;
 }
 
-///
-/// \todo implementation
-///
 LibConfig::ReturnedValue LibConfig::createConfig(char const *configName, Config **returnedConfig)
 {
-  (void)configName;
-  (void)returnedConfig;
+  try {
+    *returnedConfig = new Config(configName);
+  } catch (std::exception const &e) {
+    /// \todo catch error nicely and return relevant error
+    return UNKNOWN;
+  }
   return SUCCESS;
 }
 
-///
-/// \todo implementation
-///
 LibConfig::ReturnedValue LibConfig::getConfig(Id const* id, Config **returnedConfig)
 {
-  (void)id;
-  (void)returnedConfig;
+  try {
+    *returnedConfig = new Config(id);
+  } catch (std::exception const &e) {
+    /// \todo catch error nicely and return relevant error
+    return UNKNOWN;
+  }
   return SUCCESS;
 }
 
-///
-/// \todo implementation
-///
 LibConfig::ReturnedValue LibConfig::getReadOnlyConfig(Id const* id, Config const **returnedConfig)
 {
-  (void)id;
-  (void)returnedConfig;
+  try {
+    *returnedConfig = new Config(id);
+  } catch (std::exception const &e) {
+    /// \todo catch error nicely and return relevant error
+    return UNKNOWN;
+  }
   return SUCCESS;
 }
 

@@ -9,6 +9,12 @@ LibConfig::Config::Config(std::string const &name)
 
 }
 
+LibConfig::Config::Config(Id const *id)
+  : id(id)
+{
+
+}
+
 ///
 /// \todo implementation
 ///

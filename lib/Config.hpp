@@ -23,6 +23,7 @@ namespace LibConfig
   public:
 
     Config(std::string const &name);
+    Config(Id const *id);
     ~Config();
 
     ReturnedValue getId(Id *configId) const;

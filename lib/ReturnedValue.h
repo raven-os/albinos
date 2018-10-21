@@ -15,6 +15,9 @@ namespace LibConfig
   enum ReturnedValue
   {
 
+   /// returned if error is not managed
+   UNKNOWN,
+
    /// returned in case of success
    SUCCESS,
 
