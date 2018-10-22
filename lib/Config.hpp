@@ -12,7 +12,7 @@
 # include <filesystem>
 # include <iostream>
 # include "Libconfig.h"
-# include "../vendor/uvw/src/uvw.hpp"
+# include "uvw.hpp"
 
 namespace LibConfig
 {
