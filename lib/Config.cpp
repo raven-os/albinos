@@ -1,18 +1,44 @@
 # include "Config.hpp"
 
 ///
+/// \todo better error management
+///
+void LibConfig::Config::initSocket()
+{
+  std::string socketPath = (std::filesystem::temp_directory_path() / "raven-os_service_libconfig.sock").string();
+  ReturnedValue rv = UNKNOWN;
+
+  socket->on<uvw::ErrorEvent>([&rv](const uvw::ErrorEvent&e, uvw::PipeHandle&) {
+				if (e.code() == UV_ENOENT)
+				  rv = SOCKET_NOT_FOUND;
+				else
+				  rv = CONNECTION_ERROR;
+				std::cout << "ERROR" << std::endl;
+			      });
+  socket->once<uvw::ConnectEvent>([&rv](const uvw::ConnectEvent&, uvw::PipeHandle&) {
+				    rv = SUCCESS;
+				    std::cout << "All succeed" << std::endl;
+				 });
+  std::cout << "Try to connect to " << socketPath << std::endl;
+  socket->connect(socketPath);
+  socketLoop->run();
+  if (rv != SUCCESS)
+    throw std::exception();
+}
+
+///
 /// \todo implementation
 ///
 LibConfig::Config::Config(std::string const &name)
   : name(name)
 {
-
+  initSocket();
 }
 
 LibConfig::Config::Config(Id const *id)
-  : id(id)
+  : id(*id)
 {
-
+  initSocket();
 }
 
 ///

@@ -8,8 +8,11 @@
 
 #pragma once
 
-# include "Libconfig.h"
 # include <string>
+# include <filesystem>
+# include <iostream>
+# include "Libconfig.h"
+# include "../vendor/uvw/src/uvw.hpp"
 
 namespace LibConfig
 {
@@ -19,6 +22,11 @@ namespace LibConfig
 
     std::string name;
     Id id;
+
+    std::shared_ptr<uvw::Loop> socketLoop{uvw::Loop::getDefault()};
+    std::shared_ptr<uvw::PipeHandle> socket{socketLoop->resource<uvw::PipeHandle>()};
+
+    void initSocket();
 
   public:
 

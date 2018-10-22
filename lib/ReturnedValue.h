@@ -22,7 +22,13 @@ namespace LibConfig
    SUCCESS,
 
    /// returned if one of given parameters isn't good
-   BAD_PARAMETERS
+   BAD_PARAMETERS,
+
+   /// returned if socket file is not found
+   SOCKET_NOT_FOUND,
+
+   /// returned if an error occur when connecting
+   CONNECTION_ERROR,
   };
 
 #ifdef __cplusplus
