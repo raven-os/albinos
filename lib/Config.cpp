@@ -6,33 +6,50 @@
 void LibConfig::Config::initSocket()
 {
   std::string socketPath = (std::filesystem::temp_directory_path() / "raven-os_service_libconfig.sock").string();
-  ReturnedValue rv = UNKNOWN;
 
-  socket->on<uvw::ErrorEvent>([&rv](const uvw::ErrorEvent&e, uvw::PipeHandle&) {
-				if (e.code() == UV_ENOENT)
-				  rv = SOCKET_NOT_FOUND;
-				else
-				  rv = CONNECTION_ERROR;
-				std::cout << "ERROR" << std::endl;
+  socket->on<uvw::ErrorEvent>([](const uvw::ErrorEvent&e, uvw::PipeHandle&) {
+				std::cout << "Error" << std::endl;
+				throw std::exception();
 			      });
-  socket->once<uvw::ConnectEvent>([&rv](const uvw::ConnectEvent&, uvw::PipeHandle&) {
-				    rv = SUCCESS;
+  socket->once<uvw::ConnectEvent>([](const uvw::ConnectEvent&, uvw::PipeHandle&) {
 				    std::cout << "All succeed" << std::endl;
 				 });
-  std::cout << "Try to connect to " << socketPath << std::endl;
+  socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock){
+			       std::cout << "Data received" << std::endl;
+			       try {
+				 response = json::parse(std::string(data.data.get(), data.length));
+			       } catch (std::exception) {
+				 std::cout << "Error in response" << std::endl;
+				 throw std::exception();
+			       }
+			     });
+  std::cout << "Trying to connect to " << socketPath << std::endl;
   socket->connect(socketPath);
   socketLoop->run();
-  if (rv != SUCCESS)
-    throw std::exception();
+}
+
+void LibConfig::Config::sendJson(const json& data)
+{
+  std::string requestStr = data.dump();
+  char *buff = new char[requestStr.size()];
+  requestStr.copy(buff, requestStr.size());
+  socket->write(buff, requestStr.size());
+  delete buff;
 }
 
 ///
 /// \todo implementation
 ///
 LibConfig::Config::Config(std::string const &name)
-  : name(name)
+  : name(name), id({nullptr, 0})
 {
   initSocket();
+  json request;
+  request["config"] = name;
+  request["order"] = "CONFIG_CREATE";
+  request["provider"] = "";
+  sendJson(request);
+  socketLoop->run();
 }
 
 LibConfig::Config::Config(Id const *id)
@@ -46,7 +63,6 @@ LibConfig::Config::Config(Id const *id)
 ///
 LibConfig::Config::~Config()
 {
-
 }
 
 ///

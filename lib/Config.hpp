@@ -13,12 +13,17 @@
 # include <iostream>
 # include "Libconfig.h"
 # include "uvw.hpp"
+# include "json.hpp"
 
 namespace LibConfig
 {
-  struct Config
+  class Config
   {
   private:
+
+    using json = nlohmann::json;
+
+    json response;
 
     std::string name;
     Id id;
@@ -27,6 +32,7 @@ namespace LibConfig
     std::shared_ptr<uvw::PipeHandle> socket{socketLoop->resource<uvw::PipeHandle>()};
 
     void initSocket();
+    void sendJson(const json& data);
 
   public:
 

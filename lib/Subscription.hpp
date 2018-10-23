@@ -12,7 +12,7 @@
 
 namespace LibConfig
 {
-  struct Subscription
+  class Subscription
   {
   private:
 
