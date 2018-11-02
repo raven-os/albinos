@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <memory>
 #include <uvw.hpp>
+#include <sqlite_modern_cpp.h>
 #include "protocol.hpp"
 
 namespace raven
@@ -87,5 +88,6 @@ namespace raven
   private:
     std::shared_ptr<uvw::Loop> uv_loop_{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> server_{uv_loop_->resource<uvw::PipeHandle>()};
+    sqlite::database database_{sqlite::database("libconfig_db.sqlite")};
   };
 }
