@@ -1,28 +1,28 @@
 # Communication lib-service
 
-All orders must contain at least **ORDER**, containing the name of the order, and **CONFIG_ID**, containing the id of the config you want to work on (except for *CONFIG_CREATE*).
-Each response must contain at least **ORDER_STATE** (see below).
+All requests must contain **REQUEST_NAME**, containing the type of action they want to do.
+Each response contain at least **REQUEST_STATE** (see below).
 
-### Orders
-| Order Name | Order Description | Additional Argument(s) | Additional Returned Value(s) |
+### Requests
+| Request Name | Request Description | Additional Argument(s) | Additional Returned Value(s) |
 | -------- | -------- | -------- | -------- |
-|*CONFIG_CREATE*|Create a new config.|**CONFIG_NAME**|**CONFIG_ID**|
-|*CONFIG_LOAD*| Load an existing config. |*none*| **CONFIG_NAME**|
-|*CONFIG_UNLOAD*| Unload config. |*none*|*none*|
-|*CONFIG_INCLUDE*| Include a config in another |**SRC**<br>**DEST**|*none*|
-|*SETTING_UPDATE*| Update or create setting |**SETTING_NAME**<br>**SETTING_VALUE**|*none*|
-|*SETTING_REMOVE*| Remove setting |**SETTING_NAME**|*none*|
-|*SETTING_GET*| Get setting |**SETTING_NAME**|**SETTING_VALUE**|
-|*ALIAS_SET*| Update or create alias |**SETTING_NAME**<br>**ALIAS_NAME**|*none*|
-|*ALIAS_UNSET*| Unset alias |**ALIAS_NAME**|*none*|
+|*CONFIG_CREATE*|Create a new config.|**CONFIG_NAME**|**CONFIG_ID**<br>**READONLY_CONFIG_ID**|
+|*CONFIG_LOAD*| Load an existing config. |**CONFIG_ID** *or* **READONLY_CONFIG_ID**| **CONFIG_NAME**<br>**REQUEST_ID**|
+|*CONFIG_UNLOAD*| Unload config. |**REQUEST_ID**|*none*|
+|*CONFIG_INCLUDE*| Include a config in another |**REQUEST_ID**<br>**SRC**<br>**DEST**|*none*|
+|*SETTING_UPDATE*| Update or create setting |**REQUEST_ID**<br>**SETTING_NAME**<br>**SETTING_VALUE**|*none*|
+|*SETTING_REMOVE*| Remove setting |**REQUEST_ID**<br>**SETTING_NAME**|*none*|
+|*SETTING_GET*| Get setting |**REQUEST_ID**<br>**SETTING_NAME**|**SETTING_VALUE**|
+|*ALIAS_SET*| Update or create alias |**REQUEST_ID**<br>**SETTING_NAME**<br>**ALIAS_NAME**|*none*|
+|*ALIAS_UNSET*| Unset alias |**REQUEST_ID**<br>**ALIAS_NAME**|*none*|
 
-### ORDER_STATE
+### REQUEST_STATE
 
 
 | Value | Meaning |
 | -------- | -------- |
 | SUCCESS | Everything ok |
 | BAD_ORDER | Argument(s) missing or bad |
-| UNKNOWN_ORDER | Bad order name |
+| UNKNOWN_REQUEST | Bad request name |
 | INTERNAL_ERROR | The service got an error |
 | UNKNOWN_CONFIG | Given config id don't exist|
