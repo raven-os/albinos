@@ -41,11 +41,11 @@ namespace LibConfig
     typedef void (*FCPTR_ON_CHANGE_NOTIFIER)(void *data, char const *newValue);
 
     ///
-    /// \brief contains a unique id for each configuration
+    /// \brief contains a unique key for each configuration
     ///
     /// \param 'size' is the size of 'data' in bytes
     ///
-    struct Id {
+    struct Key {
       void *data;
       size_t size;
     };
@@ -87,20 +87,20 @@ namespace LibConfig
     enum ReturnedValue createConfig(char const *configName, struct Config **returnedConfig);
 
     ///
-    /// \brief get config from id
-    /// \param 'id' the id of the requested config
+    /// \brief get config from Key
+    /// \param 'key' the Key of the requested config
     /// \param 'returnedConfig' if the function succeeds, a pointer is written to a new 'struct Config'
     /// \return error code
     ///
-    enum ReturnedValue getConfig(struct Id const* id, struct Config **returnedConfig);
+    enum ReturnedValue getConfig(struct Key const* key, struct Config **returnedConfig);
 
     ///
-    /// \brief get const config from id
-    /// \param 'id' the id of the requested config
+    /// \brief get const config from key
+    /// \param 'key' the key of the requested config
     /// \param 'returnedConfig' if the function succeeds, a pointer is written to a new 'struct Config'
     /// \return error code
     ///
-    enum ReturnedValue getReadOnlyConfig(struct Id const* id, struct Config const **returnedConfig);
+    enum ReturnedValue getReadOnlyConfig(struct Key const* key, struct Config const **returnedConfig);
 
     ///
     /// \brief release the config, freeing the underlying memory
@@ -111,12 +111,12 @@ namespace LibConfig
     void releaseConfig(struct Config const *);
 
     ///
-    /// \brief get the id of the given config
+    /// \brief get the key of the given config
     /// \param the config
-    /// \param 'configId' if the function succeeds, contain the config id
+    /// \param 'configKey' if the function succeeds, contain the config key
     /// \return error code
     ///
-    enum ReturnedValue getConfigId(struct Config const *, struct Id *configId);
+    enum ReturnedValue getConfigKey(struct Config const *, struct Key *configKey);
 
     ///
     /// \brief basic operation to add a new setting or modify an existing one
