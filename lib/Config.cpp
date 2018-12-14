@@ -41,7 +41,7 @@ void LibConfig::Config::sendJson(const json& data)
 /// \todo implementation
 ///
 LibConfig::Config::Config(std::string const &name)
-  : name(name), id({nullptr, 0})
+  : name(name), key({nullptr, 0})
 {
   initSocket();
   json request;
@@ -52,8 +52,8 @@ LibConfig::Config::Config(std::string const &name)
   socketLoop->run();
 }
 
-LibConfig::Config::Config(Id const *id)
-  : id(*id)
+LibConfig::Config::Config(Key const *key)
+  : key(*key)
 {
   initSocket();
 }
@@ -68,9 +68,9 @@ LibConfig::Config::~Config()
 ///
 /// \todo implementation
 ///
-LibConfig::ReturnedValue LibConfig::Config::getId(Id *configId) const
+LibConfig::ReturnedValue LibConfig::Config::getKey(Key *configKey) const
 {
-  (void)configId;
+  (void)configKey;
   return SUCCESS;
 }
 

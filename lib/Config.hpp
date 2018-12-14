@@ -26,7 +26,7 @@ namespace LibConfig
     json response;
 
     std::string name;
-    Id id;
+    Key key;
 
     std::shared_ptr<uvw::Loop> socketLoop{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> socket{socketLoop->resource<uvw::PipeHandle>()};
@@ -37,10 +37,10 @@ namespace LibConfig
   public:
 
     Config(std::string const &name);
-    Config(Id const *id);
+    Config(Key const *key);
     ~Config();
 
-    ReturnedValue getId(Id *configId) const;
+    ReturnedValue getKey(Key *configKey) const;
     ReturnedValue getSettingValue(char const *settingName, char *value, size_t valueSize) const;
     ReturnedValue getSettingSize(char const *settingName, size_t *size) const;
 

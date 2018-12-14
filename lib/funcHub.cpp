@@ -16,10 +16,10 @@ LibConfig::ReturnedValue LibConfig::createConfig(char const *configName, Config 
   return SUCCESS;
 }
 
-LibConfig::ReturnedValue LibConfig::getConfig(Id const* id, Config **returnedConfig)
+LibConfig::ReturnedValue LibConfig::getConfig(Key const* key, Config **returnedConfig)
 {
   try {
-    *returnedConfig = new Config(id);
+    *returnedConfig = new Config(key);
   } catch (std::exception const &e) {
     /// \todo catch error nicely and return relevant error
     return UNKNOWN;
@@ -27,10 +27,10 @@ LibConfig::ReturnedValue LibConfig::getConfig(Id const* id, Config **returnedCon
   return SUCCESS;
 }
 
-LibConfig::ReturnedValue LibConfig::getReadOnlyConfig(Id const* id, Config const **returnedConfig)
+LibConfig::ReturnedValue LibConfig::getReadOnlyConfig(Key const* key, Config const **returnedConfig)
 {
   try {
-    *returnedConfig = new Config(id);
+    *returnedConfig = new Config(key);
   } catch (std::exception const &e) {
     /// \todo catch error nicely and return relevant error
     return UNKNOWN;
@@ -43,11 +43,11 @@ void LibConfig::releaseConfig(Config const *config)
   delete config;
 }
 
-LibConfig::ReturnedValue LibConfig::getConfigId(Config const *config, Id *configId)
+LibConfig::ReturnedValue LibConfig::getConfigKey(Config const *config, Key *configKey)
 {
-  if (!config || !configId)
+  if (!config || !configKey)
     return BAD_PARAMETERS;
-  return config->getId(configId);
+  return config->getKey(configKey);
 }
 
 LibConfig::ReturnedValue LibConfig::setSetting(Config *config, char const *name, char const *value)
