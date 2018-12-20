@@ -1,11 +1,11 @@
 # Communication lib-service
 
-## lib->service
+## Requests
 
 All requests must contain **REQUEST_NAME**, containing the type of action they want to do.
 Each response contain at least **REQUEST_STATE** (see below).
 
-### Requests
+### Requests types
 | Request Name | Request Description | Additional Argument(s) | Additional Returned Value(s) |
 | -------- | -------- | -------- | -------- |
 |*CONFIG_CREATE*|Create a new config.|**CONFIG_NAME**|**CONFIG_KEY**<br>**READONLY_CONFIG_KEY**|
@@ -33,12 +33,12 @@ Each response contain at least **REQUEST_STATE** (see below).
 | UNKNOWN_SETTING | Given setting name doesn't exist|
 | UNKNOWN_ALIAS | Given alias name doesn't exist|
 
-## service->lib
+## Events
 
 The service can also send a message to the lib if a subscribed setting is modified.
 
 | Argument name | Description |
 | ---- | ---- |
 | *SETTING_NAME* | Name of the concerned setting. |
-| *ACTION* | Must contain **UPDATED** or **DELETED** |
-| *NEW_VALUE* | If *ACTION* == **UPDATED**, contain the new value of the setting |
+| *UPDATE* | Contain the new value of the setting in case of value update. |
+| *DELETE* | Boolean indicating if setting was deleted. |
