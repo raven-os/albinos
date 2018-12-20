@@ -1,5 +1,7 @@
 # Communication lib-service
 
+## lib->service
+
 All requests must contain **REQUEST_NAME**, containing the type of action they want to do.
 Each response contain at least **REQUEST_STATE** (see below).
 
@@ -15,9 +17,10 @@ Each response contain at least **REQUEST_STATE** (see below).
 |*SETTING_GET*| Get setting |**CONFIG_ID**<br>**SETTING_NAME**|**SETTING_VALUE**|
 |*ALIAS_SET*| Update or create alias |**CONFIG_ID**<br>**SETTING_NAME**<br>**ALIAS_NAME**|*none*|
 |*ALIAS_UNSET*| Unset alias |**CONFIG_ID**<br>**ALIAS_NAME**|*none*|
+|*SUBSCRIBE_SETTING*| Subscribe to given setting |**CONFIG_ID**<br>**SETTING_NAME** *or* **ALIAS_NAME**|*none*|
+|*UNSUBSCRIBE_SETTING*| Unsubscribe to given setting |**CONFIG_ID**<br>**SETTING_NAME** *or* **ALIAS_NAME**|*none*|
 
 ### REQUEST_STATE
-
 
 | Value | Meaning |
 | -------- | -------- |
@@ -25,5 +28,17 @@ Each response contain at least **REQUEST_STATE** (see below).
 | BAD_ORDER | Argument(s) missing or bad |
 | UNKNOWN_REQUEST | Bad request name |
 | INTERNAL_ERROR | The service got an error |
-| UNKNOWN_ID | Given config id don't exist|
-| UNKNOWN_KEY | Given config key don't exist|
+| UNKNOWN_ID | Given config id doesn't exist|
+| UNKNOWN_KEY | Given config key doesn't exist|
+| UNKNOWN_SETTING | Given setting name doesn't exist|
+| UNKNOWN_ALIAS | Given alias name doesn't exist|
+
+## service->lib
+
+The service can also send a message to the lib if a subscribed setting is modified.
+
+| Argument name | Description |
+| ---- | ---- |
+| *SETTING_NAME* | Name of the concerned setting. |
+| *ACTION* | Must contain **UPDATED** or **DELETED** |
+| *NEW_VALUE* | If *ACTION* == **UPDATED**, contain the new value of the setting |
