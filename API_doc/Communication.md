@@ -5,7 +5,7 @@
 All requests must contain **REQUEST_NAME**, containing the type of action they want to do.
 Each response contain at least **REQUEST_STATE** (see below).
 
-### Requests types
+### Request types
 | Request Name | Request Description | Additional Argument(s) | Additional Returned Value(s) |
 | -------- | -------- | -------- | -------- |
 |*CONFIG_CREATE*|Create a new config.|**CONFIG_NAME**|**CONFIG_KEY**<br>**READONLY_CONFIG_KEY**|
@@ -36,9 +36,9 @@ Each response contain at least **REQUEST_STATE** (see below).
 ## Events
 
 The service can also send a message to the lib if a subscribed setting is modified.
+All events must contain "SETTING_NAME" containing the name of the concerned setting.
 
-| Argument name | Description |
+| Action | Description |
 | ---- | ---- |
-| *SETTING_NAME* | Name of the concerned setting. |
 | *UPDATE* | Contain the new value of the setting in case of value update. |
 | *DELETE* | Boolean indicating if setting was deleted. |
