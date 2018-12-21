@@ -38,31 +38,60 @@ void LibConfig::Config::sendJson(const json& data)
 }
 
 ///
-/// \todo implementation
+/// \todo get response and set-up keys
 ///
 LibConfig::Config::Config(std::string const &name)
-  : name(name), key({nullptr, 0})
+  : name(name)
 {
   initSocket();
   json request;
-  request["config"] = name;
-  request["order"] = "CONFIG_CREATE";
-  request["provider"] = "";
+  request["CONFIG_NAME"] = name;
+  request["ORDER"] = "CONFIG_CREATE";
   sendJson(request);
   socketLoop->run();
 }
 
-LibConfig::Config::Config(Key const *key)
-  : key(*key)
+///
+/// \todo get response and set-up name
+///
+LibConfig::Config::Config(Key const *givenKey)
+  : name("")
 {
+  if (!givenKey)
+    throw std::exception();
+
   initSocket();
+  json request;
+  request["ORDER"] = "CONFIG_LOAD";
+
+  if (givenKey->type == LibConfig::READ_WRITE) {
+    key = {new char[givenKey->size], givenKey->size, LibConfig::READ_WRITE};
+    std::memcpy(key->data, givenKey->data, givenKey->size);
+    request["CONFIG_KEY"] = std::string(static_cast<char*>(key->data), key->size);
+  } else {
+    roKey = {new char[givenKey->size], givenKey->size, LibConfig::READ_ONLY};
+    std::memcpy(key->data, givenKey->data, givenKey->size);
+    request["READONLY_CONFIG_KEY"] = std::string(static_cast<char*>(roKey->data), roKey->size);
+  }
+  sendJson(request);
+  socketLoop->run();
 }
 
 ///
-/// \todo implementation
+/// \todo check response
 ///
 LibConfig::Config::~Config()
 {
+  if (key || roKey) {
+    json request;
+    request["ORDER"] = "CONFIG_UNLOAD";
+    request["CONFIG_ID"] = configId;
+    sendJson(request);
+    if (key)
+      delete key->data;
+    if (roKey)
+      delete roKey->data;
+  }
 }
 
 ///

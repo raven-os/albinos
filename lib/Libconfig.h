@@ -41,6 +41,14 @@ namespace LibConfig
     typedef void (*FCPTR_ON_CHANGE_NOTIFIER)(void *data, char const *newValue);
 
     ///
+    /// \brief indicate the key type
+    ///
+    enum KeyType
+      {
+       READ_ONLY,
+       READ_WRITE,
+      };
+    ///
     /// \brief contains a unique key for each configuration
     ///
     /// \param 'size' is the size of 'data' in bytes
@@ -48,6 +56,7 @@ namespace LibConfig
     struct Key {
       void *data;
       size_t size;
+      enum KeyType type;
     };
 
     ///

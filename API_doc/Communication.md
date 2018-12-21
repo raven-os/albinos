@@ -28,6 +28,7 @@ Each response contain at least **REQUEST_STATE** (see below).
 | BAD_ORDER | Argument(s) missing or bad |
 | UNKNOWN_REQUEST | Bad request name |
 | INTERNAL_ERROR | The service got an error |
+| UNAUTHORIZED | Sent if a read-only session try to modify the config |
 | UNKNOWN_ID | Given config id doesn't exist|
 | UNKNOWN_KEY | Given config key doesn't exist|
 | UNKNOWN_SETTING | Given setting name doesn't exist|

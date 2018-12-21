@@ -11,6 +11,7 @@
 # include <string>
 # include <filesystem>
 # include <iostream>
+# include <optional>
 # include "Libconfig.h"
 # include "uvw.hpp"
 # include "json.hpp"
@@ -26,7 +27,9 @@ namespace LibConfig
     json response;
 
     std::string name;
-    Key key;
+    std::string configId;
+    std::optional<Key> key;
+    std::optional<Key> roKey;
 
     std::shared_ptr<uvw::Loop> socketLoop{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> socket{socketLoop->resource<uvw::PipeHandle>()};
