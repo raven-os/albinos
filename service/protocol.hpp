@@ -18,6 +18,7 @@ namespace raven
   static inline constexpr const char *config_name_keyword = "CONFIG_NAME";
   static inline constexpr const char *config_key_keyword = "CONFIG_KEY";
   static inline constexpr const char *config_read_only_key_keyword = "READONLY_CONFIG_KEY";
+  static inline constexpr const char *config_id = "CONFIG_ID";
 
   //! CONFIG_CREATE
   struct config_create
@@ -44,5 +45,16 @@ namespace raven
       } else if (json_data.count(config_read_only_key_keyword) > 0) {
           cfg.config_read_only_key = json_data.at(config_read_only_key_keyword).get<std::string>();
       }
+  }
+
+  //! CONFIG_UNLOAD
+  struct config_unload
+  {
+    std::uint32_t id;
+  };
+
+  inline void from_json(const raven::json::json &json_data, config_unload &cfg)
+  {
+      cfg.id = json_data.at(config_id).get<std::uint32_t>();
   }
 }

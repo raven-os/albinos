@@ -47,6 +47,13 @@ namespace raven
         }
     }
 
+    void unload_config(json::json &json_data)
+    {
+        auto cfg = fill_request<config_unload>(json_data);
+        std::cout << "json receive:\n" << std::setw(4) << json_data << std::endl;
+        std::cout << "cfg.id: " << cfg.id << std::endl;
+    }
+
     service()
     {
         server_->on<uvw::ErrorEvent>([](auto const &, auto &) { /* TODO: Fill it */ });
@@ -62,13 +69,16 @@ namespace raven
 
             socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
                 static const std::unordered_map<std::string, std::function<void(json::json &)>>
-                    order_registry{{"CONFIG_CREATE", [this](json::json &json_data) {
-                    this->create_config(json_data);
-                }},
-                                   {"CONFIG_LOAD",   [this](json::json &json_data) {
-                                       this->load_config(json_data);
-                                   }},
-                                   {"CONFIG_UNLOAD", [this](json::json &json_data) { /* TODO: fill it */ }}};
+                    order_registry{
+                    {"CONFIG_CREATE", [this](json::json &json_data) {
+                        this->create_config(json_data);
+                    }},
+                    {"CONFIG_LOAD",   [this](json::json &json_data) {
+                        this->load_config(json_data);
+                    }},
+                    {"CONFIG_UNLOAD", [this](json::json &json_data) {
+                        this->unload_config(json_data);
+                    }}};
 
                 std::string_view data_str(data.data.get(), data.length);
                 try {
