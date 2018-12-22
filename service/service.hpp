@@ -62,6 +62,14 @@ namespace raven
         std::cout << "cfg.dst: " << cfg.dst << std::endl;
     }
 
+    void update_setting(json::json &json_data)
+    {
+        auto cfg = fill_request<setting_update>(json_data);
+        std::cout << "cfg.id: " << cfg.id << std::endl;
+        std::cout << "cfg.setting_name: " << cfg.setting_name << std::endl;
+        std::cout << "cfg.setting_value: " << cfg.setting_value << std::endl;
+    }
+
     //! Constructor
     service()
     {
@@ -95,6 +103,10 @@ namespace raven
                         {
                             "CONFIG_INCLUDE", [this](json::json &json_data) {
                             this->include_config(json_data);
+                        }},
+                        {
+                            "SETTING_UPDATE", [this](json::json &json_data) {
+                            this->update_setting(json_data);
                         }}
                     };
 

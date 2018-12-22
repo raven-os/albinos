@@ -1,0 +1,6 @@
+{
+  "REQUEST_NAME": "SETTING_UPDATE",
+  "CONFIG_ID": 42,
+  "SETTING_NAME": "foo",
+  "SETTING_VALUE": "bar"
+}
