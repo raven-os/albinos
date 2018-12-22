@@ -18,19 +18,21 @@ namespace raven
   class service
   {
   private:
+    //! Helpers
     template <typename Request>
     Request fill_request(json::json &json_data)
     {
         Request request;
         from_json(json_data, request);
+        std::cout << "json receive:\n" << std::setw(4) << json_data << std::endl;
         return request;
     }
 
   public:
+    //! Callbacks
     void create_config(json::json &json_data)
     {
         auto cfg = fill_request<config_create>(json_data);
-        std::cout << "json receive:\n" << std::setw(4) << json_data << std::endl;
         std::cout << "cfg.config_name: " << cfg.config_name << std::endl;
         // TODO: Insert in SQL
     }
@@ -38,7 +40,6 @@ namespace raven
     void load_config(json::json &json_data)
     {
         auto cfg = fill_request<config_load>(json_data);
-        std::cout << "json receive:\n" << std::setw(4) << json_data << std::endl;
         if (cfg.config_key) {
             std::cout << "cfg.config_key: " << cfg.config_key.value() << std::endl;
         }
@@ -50,10 +51,18 @@ namespace raven
     void unload_config(json::json &json_data)
     {
         auto cfg = fill_request<config_unload>(json_data);
-        std::cout << "json receive:\n" << std::setw(4) << json_data << std::endl;
         std::cout << "cfg.id: " << cfg.id << std::endl;
     }
 
+    void include_config(json::json &json_data)
+    {
+        auto cfg = fill_request<config_include>(json_data);
+        std::cout << "cfg.id: " << cfg.id << std::endl;
+        std::cout << "cfg.src: " << cfg.src << std::endl;
+        std::cout << "cfg.dst: " << cfg.dst << std::endl;
+    }
+
+    //! Constructor
     service()
     {
         server_->on<uvw::ErrorEvent>([](auto const &, auto &) { /* TODO: Fill it */ });
@@ -69,16 +78,25 @@ namespace raven
 
             socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
                 static const std::unordered_map<std::string, std::function<void(json::json &)>>
-                    order_registry{
-                    {"CONFIG_CREATE", [this](json::json &json_data) {
-                        this->create_config(json_data);
-                    }},
-                    {"CONFIG_LOAD",   [this](json::json &json_data) {
-                        this->load_config(json_data);
-                    }},
-                    {"CONFIG_UNLOAD", [this](json::json &json_data) {
-                        this->unload_config(json_data);
-                    }}};
+                    order_registry
+                    {
+                        {
+                            "CONFIG_CREATE",  [this](json::json &json_data) {
+                            this->create_config(json_data);
+                        }},
+                        {
+                            "CONFIG_LOAD",    [this](json::json &json_data) {
+                            this->load_config(json_data);
+                        }},
+                        {
+                            "CONFIG_UNLOAD",  [this](json::json &json_data) {
+                            this->unload_config(json_data);
+                        }},
+                        {
+                            "CONFIG_INCLUDE", [this](json::json &json_data) {
+                            this->include_config(json_data);
+                        }}
+                    };
 
                 std::string_view data_str(data.data.get(), data.length);
                 try {
