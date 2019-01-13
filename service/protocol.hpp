@@ -105,4 +105,17 @@ namespace raven
       cfg.id = json_data.at(config_id).get<std::uint32_t>();
       cfg.setting_name = json_data.at(setting_name).get<std::string>();
   }
+
+  //! SETTING_GET
+  struct setting_get
+  {
+    std::uint32_t id;
+    std::string setting_name;
+  };
+
+  inline void from_json(const raven::json::json &json_data, setting_get &cfg)
+  {
+      cfg.id = json_data.at(config_id).get<std::uint32_t>();
+      cfg.setting_name = json_data.at(setting_name).get<std::string>();
+  }
 }

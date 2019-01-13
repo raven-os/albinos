@@ -77,6 +77,13 @@ namespace raven
         std::cout << "cfg.setting_name: " << cfg.setting_name << std::endl;
     }
 
+    void get_setting(json::json &json_data)
+    {
+        auto cfg = fill_request<setting_get>(json_data);
+        std::cout << "cfg.id: " << cfg.id << std::endl;
+        std::cout << "cfg.setting_name: " << cfg.setting_name << std::endl;
+    }
+
     //! Constructor
     service()
     {
@@ -118,6 +125,10 @@ namespace raven
                         {
                             "SETTING_REMOVE", [this](json::json &json_data) {
                             this->remove_setting(json_data);
+                        }},
+                        {
+                            "SETTING_GET",    [this](json::json &json_data) {
+                            this->get_setting(json_data);
                         }}
                     };
 

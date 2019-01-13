@@ -1,0 +1,5 @@
+{
+  "REQUEST_NAME": "SETTING_GET",
+  "CONFIG_ID": 43,
+  "SETTING_NAME": "foobar"
+}
