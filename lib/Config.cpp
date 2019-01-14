@@ -1,6 +1,24 @@
 # include "Config.hpp"
 
 ///
+/// \todo handle event
+///
+void LibConfig::Config::parseResponse(json const &data)
+{
+  std::string status = std::string();
+  try {
+    status = data.at("REQUEST_STATE").get<std::string>();
+  } catch (std::exception) {
+    // if the data received do not contain 'REQUEST_STATE', it's an event
+    std::string setting = data.at("SETTING_NAME").get<std::string>();
+    std::string newValue = data.at("UPDATE").get<std::string>();
+    bool isDelete = data.at("DELETE").get<bool>();
+    return;
+  }
+  std::cout << "request status " << status << std::endl;
+}
+
+///
 /// \todo better error management
 ///
 void LibConfig::Config::initSocket()
@@ -17,9 +35,9 @@ void LibConfig::Config::initSocket()
   socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock){
 			       std::cout << "Data received" << std::endl;
 			       try {
-				 response = json::parse(std::string(data.data.get(), data.length));
+				 parseResponse(json::parse(std::string(data.data.get(), data.length)));
 			       } catch (std::exception) {
-				 std::cout << "Error in response" << std::endl;
+				 std::cout << "Error in data received" << std::endl;
 				 throw std::exception();
 			       }
 			     });
@@ -46,7 +64,7 @@ LibConfig::Config::Config(std::string const &name)
   initSocket();
   json request;
   request["CONFIG_NAME"] = name;
-  request["ORDER"] = "CONFIG_CREATE";
+  request["REQUEST_NAME"] = "CONFIG_CREATE";
   sendJson(request);
   socketLoop->run();
 }
@@ -62,7 +80,7 @@ LibConfig::Config::Config(Key const *givenKey)
 
   initSocket();
   json request;
-  request["ORDER"] = "CONFIG_LOAD";
+  request["REQUEST_NAME"] = "CONFIG_LOAD";
 
   if (givenKey->type == LibConfig::READ_WRITE) {
     key = {new char[givenKey->size], givenKey->size, LibConfig::READ_WRITE};
@@ -77,9 +95,6 @@ LibConfig::Config::Config(Key const *givenKey)
   socketLoop->run();
 }
 
-///
-/// \todo check response
-///
 LibConfig::Config::~Config()
 {
   if (key || roKey) {
@@ -87,6 +102,7 @@ LibConfig::Config::~Config()
     request["ORDER"] = "CONFIG_UNLOAD";
     request["CONFIG_ID"] = configId;
     sendJson(request);
+    socketLoop->run();
     if (key)
       delete key->data;
     if (roKey)

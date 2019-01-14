@@ -35,7 +35,9 @@ namespace LibConfig
     std::shared_ptr<uvw::PipeHandle> socket{socketLoop->resource<uvw::PipeHandle>()};
 
     void initSocket();
-    void sendJson(const json& data);
+    void sendJson(json const &data);
+
+    void parseResponse(json const &data);
 
   public:
 
