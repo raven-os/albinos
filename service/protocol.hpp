@@ -23,6 +23,7 @@ namespace raven
   static inline constexpr const char *config_include_dst = "DST";
   static inline constexpr const char *setting_name = "SETTING_NAME";
   static inline constexpr const char *setting_value = "SETTING_VALUE";
+  static inline constexpr const char *alias_name = "ALIAS_NAME";
 
   //! CONFIG_CREATE
   struct config_create
@@ -117,5 +118,20 @@ namespace raven
   {
       cfg.id = json_data.at(config_id).get<std::uint32_t>();
       cfg.setting_name = json_data.at(setting_name).get<std::string>();
+  }
+
+  //! ALIAS_SET
+  struct alias_set
+  {
+    std::uint32_t id;
+    std::string setting_name;
+    std::string alias_name;
+  };
+
+  inline void from_json(const raven::json::json &json_data, alias_set &cfg)
+  {
+      cfg.id = json_data.at(config_id).get<std::uint32_t>();
+      cfg.setting_name = json_data.at(setting_name).get<std::string>();
+      cfg.alias_name = json_data.at(alias_name).get<std::string>();
   }
 }
