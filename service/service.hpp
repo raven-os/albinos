@@ -99,6 +99,18 @@ namespace raven
         std::cout << "cfg.alias_name: " << cfg.alias_name << std::endl;
     }
 
+    void subscribe_setting(json::json &json_data)
+    {
+        auto cfg = fill_request<setting_subscribe>(json_data);
+        std::cout << "cfg.id: " << cfg.id << std::endl;
+        if (cfg.setting_name) {
+            std::cout << "cfg.setting_name: " << cfg.setting_name.value() << std::endl;
+        }
+        if (cfg.alias_name) {
+            std::cout << "cfg.alias_name: " << cfg.alias_name.value() << std::endl;
+        }
+    }
+
     //! Constructor
     service()
     {
@@ -118,41 +130,46 @@ namespace raven
                     order_registry
                     {
                         {
-                            "CONFIG_CREATE",  [this](json::json &json_data) {
+                            "CONFIG_CREATE",     [this](json::json &json_data) {
                             this->create_config(json_data);
                         }},
                         {
-                            "CONFIG_LOAD",    [this](json::json &json_data) {
+                            "CONFIG_LOAD",       [this](json::json &json_data) {
                             this->load_config(json_data);
                         }},
                         {
-                            "CONFIG_UNLOAD",  [this](json::json &json_data) {
+                            "CONFIG_UNLOAD",     [this](json::json &json_data) {
                             this->unload_config(json_data);
                         }},
                         {
-                            "CONFIG_INCLUDE", [this](json::json &json_data) {
+                            "CONFIG_INCLUDE",    [this](json::json &json_data) {
                             this->include_config(json_data);
                         }},
                         {
-                            "SETTING_UPDATE", [this](json::json &json_data) {
+                            "SETTING_UPDATE",    [this](json::json &json_data) {
                             this->update_setting(json_data);
                         }},
                         {
-                            "SETTING_REMOVE", [this](json::json &json_data) {
+                            "SETTING_REMOVE",    [this](json::json &json_data) {
                             this->remove_setting(json_data);
                         }},
                         {
-                            "SETTING_GET",    [this](json::json &json_data) {
+                            "SETTING_GET",       [this](json::json &json_data) {
                             this->get_setting(json_data);
                         }},
                         {
-                            "ALIAS_SET",      [this](json::json &json_data) {
+                            "ALIAS_SET",         [this](json::json &json_data) {
                             this->set_alias(json_data);
                         },
                         },
                         {
-                            "ALIAS_UNSET",    [this](json::json &json_data) {
+                            "ALIAS_UNSET",       [this](json::json &json_data) {
                             this->unset_alias(json_data);
+                        },
+                        },
+                        {
+                            "SUBSCRIBE_SETTING", [this](json::json &json_data) {
+                            this->subscribe_setting(json_data);
                         },
                         }
                     };

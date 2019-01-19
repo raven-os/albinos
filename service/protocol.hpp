@@ -147,4 +147,22 @@ namespace raven
       cfg.id = json_data.at(config_id).get<std::uint32_t>();
       cfg.alias_name = json_data.at(alias_name).get<std::string>();
   }
+
+  //! SUBSCRIBE_SETTING
+  struct setting_subscribe
+  {
+    std::uint32_t id;
+    std::optional<std::string> setting_name{std::nullopt};
+    std::optional<std::string> alias_name{std::nullopt};
+  };
+
+  inline void from_json(const raven::json::json &json_data, setting_subscribe &cfg)
+  {
+      cfg.id = json_data.at(config_id).get<std::uint32_t>();
+      if (json_data.count(alias_name) > 0) {
+          cfg.alias_name = json_data.at(alias_name).get<std::string>();
+      } else if (json_data.count(setting_name) > 0) {
+          cfg.setting_name = json_data.at(setting_name).get<std::string>();
+      }
+  }
 }
