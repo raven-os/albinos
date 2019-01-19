@@ -92,6 +92,13 @@ namespace raven
         std::cout << "cfg.alias_name: " << cfg.alias_name << std::endl;
     }
 
+    void unset_alias(json::json &json_data)
+    {
+        auto cfg = fill_request<alias_unset>(json_data);
+        std::cout << "cfg.id: " << cfg.id << std::endl;
+        std::cout << "cfg.alias_name: " << cfg.alias_name << std::endl;
+    }
+
     //! Constructor
     service()
     {
@@ -141,7 +148,13 @@ namespace raven
                         {
                             "ALIAS_SET",      [this](json::json &json_data) {
                             this->set_alias(json_data);
-                        }}
+                        },
+                        },
+                        {
+                            "ALIAS_UNSET",    [this](json::json &json_data) {
+                            this->unset_alias(json_data);
+                        },
+                        }
                     };
 
                 std::string_view data_str(data.data.get(), data.length);
