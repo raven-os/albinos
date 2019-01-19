@@ -148,6 +148,17 @@ namespace raven
       cfg.alias_name = json_data.at(alias_name).get<std::string>();
   }
 
+  template <typename TSetting>
+  void fill_setting_behavior(const raven::json::json &json_data, TSetting &&cfg)
+  {
+      cfg.id = json_data.at(config_id).get<std::uint32_t>();
+      if (json_data.count(alias_name) > 0) {
+          cfg.alias_name = json_data.at(alias_name).get<std::string>();
+      } else if (json_data.count(setting_name) > 0) {
+          cfg.setting_name = json_data.at(setting_name).get<std::string>();
+      }
+  }
+
   //! SUBSCRIBE_SETTING
   struct setting_subscribe
   {
@@ -158,11 +169,19 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, setting_subscribe &cfg)
   {
-      cfg.id = json_data.at(config_id).get<std::uint32_t>();
-      if (json_data.count(alias_name) > 0) {
-          cfg.alias_name = json_data.at(alias_name).get<std::string>();
-      } else if (json_data.count(setting_name) > 0) {
-          cfg.setting_name = json_data.at(setting_name).get<std::string>();
-      }
+      fill_setting_behavior<setting_subscribe>(json_data, std::forward<setting_subscribe>(cfg));
+  }
+
+  //! UNSUBSCRIBE_SETTING
+  struct setting_unsubscribe
+  {
+    std::uint32_t id;
+    std::optional<std::string> setting_name{std::nullopt};
+    std::optional<std::string> alias_name{std::nullopt};
+  };
+
+  inline void from_json(const raven::json::json &json_data, setting_unsubscribe &cfg)
+  {
+      fill_setting_behavior<setting_unsubscribe>(json_data, std::forward<setting_unsubscribe>(cfg));
   }
 }
