@@ -149,7 +149,7 @@ namespace raven
   }
 
   template <typename TSetting>
-  void fill_setting_behavior(const raven::json::json &json_data, TSetting &&cfg)
+  void fill_subscription_struct(const raven::json::json &json_data, TSetting &&cfg)
   {
       cfg.id = json_data.at(config_id).get<std::uint32_t>();
       if (json_data.count(alias_name) > 0) {
@@ -169,7 +169,7 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, setting_subscribe &cfg)
   {
-      fill_setting_behavior<setting_subscribe>(json_data, std::forward<setting_subscribe>(cfg));
+      fill_subscription_struct<setting_subscribe>(json_data, std::forward<setting_subscribe>(cfg));
   }
 
   //! UNSUBSCRIBE_SETTING
@@ -182,6 +182,6 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, setting_unsubscribe &cfg)
   {
-      fill_setting_behavior<setting_unsubscribe>(json_data, std::forward<setting_unsubscribe>(cfg));
+      fill_subscription_struct<setting_unsubscribe>(json_data, std::forward<setting_unsubscribe>(cfg));
   }
 }
