@@ -37,7 +37,10 @@ namespace raven
         // TODO: Insert in SQL
 
         // TODO: Send config key create by SQL (arthur work)
-        sock.write(const_cast<char *>("CONFIG_KEY: Foo"), sizeof("CONFIG_KEY: Foo"));
+        const config_create_answer answer{"Foo", "Foo"};
+        json::json response_json_data;
+        to_json(response_json_data, answer);
+        sock.write(response_json_data.dump().data(), static_cast<unsigned int>(response_json_data.dump().size()));
     }
 
     void load_config(json::json &json_data, uvw::PipeHandle &sock)
@@ -53,7 +56,10 @@ namespace raven
         //! TODO: load from sql
 
         //! TODO: change after arthur work
-        sock.write(const_cast<char *>("CONFIG_NAME: Foo\nCONFIG_ID: 42"), sizeof("CONFIG_NAME: Foo\nCONFIG_ID: 42"));
+        const config_load_answer answer{"Foo", 42};
+        json::json response_json_data;
+        to_json(response_json_data, answer);
+        sock.write(response_json_data.dump().data(), static_cast<unsigned int>(response_json_data.dump().size()));
     }
 
     void unload_config(json::json &json_data, uvw::PipeHandle &sock)
@@ -94,7 +100,10 @@ namespace raven
         //! TODO: load from sql
 
         //! TODO: change after arthur work
-        sock.write(const_cast<char *>("SETTING_VALUE: Foo"), sizeof("SETTING_VALUE: Foo"));
+        const setting_get_answer answer{"FooBar"};
+        json::json response_json_data;
+        to_json(response_json_data, answer);
+        sock.write(response_json_data.dump().data(), static_cast<unsigned int>(response_json_data.dump().size()));
     }
 
     void set_alias(json::json &json_data, uvw::PipeHandle &sock)

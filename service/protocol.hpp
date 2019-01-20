@@ -36,6 +36,19 @@ namespace raven
       cfg.config_name = json_data.at(config_name_keyword).get<std::string>();
   }
 
+  //! CONFIG_CREATE ANSWER
+  struct config_create_answer
+  {
+    std::string config_key;
+    std::string readonly_config_key;
+  };
+
+  void to_json(raven::json::json &j, const config_create_answer &cfg)
+  {
+      j = {{"CONFIG_KEY",          cfg.config_key},
+           {"READONLY_CONFIG_KEY", cfg.readonly_config_key}};
+  }
+
   //! CONFIG_LOAD
   struct config_load
   {
@@ -51,6 +64,19 @@ namespace raven
       } else if (json_data.count(config_read_only_key_keyword) > 0) {
           cfg.config_read_only_key = json_data.at(config_read_only_key_keyword).get<std::string>();
       }
+  }
+
+  //! CONFIG_LOAD ANSWER
+  struct config_load_answer
+  {
+    std::string config_name;
+    std::uint32_t config_id;
+  };
+
+  void to_json(raven::json::json &j, const config_load_answer &cfg)
+  {
+      j = {{"CONFIG_NAME", cfg.config_name},
+           {"CONFIG_ID",   cfg.config_id}};
   }
 
   //! CONFIG_UNLOAD
@@ -118,6 +144,17 @@ namespace raven
   {
       cfg.id = json_data.at(config_id).get<std::uint32_t>();
       cfg.setting_name = json_data.at(setting_name).get<std::string>();
+  }
+
+  //! SETTING_GET ANSWER
+  struct setting_get_answer
+  {
+    std::string setting_value;
+  };
+
+  void to_json(raven::json::json &j, const setting_get_answer &cfg)
+  {
+      j = {{"SETTING_VALUE", cfg.setting_value}};
   }
 
   //! ALIAS_SET
