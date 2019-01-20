@@ -43,10 +43,10 @@ namespace raven
     std::string readonly_config_key;
   };
 
-  void to_json(raven::json::json &j, const config_create_answer &cfg)
+  void to_json(raven::json::json &json_data, const config_create_answer &cfg)
   {
-      j = {{"CONFIG_KEY",          cfg.config_key},
-           {"READONLY_CONFIG_KEY", cfg.readonly_config_key}};
+      json_data = {{"CONFIG_KEY",          cfg.config_key},
+                   {"READONLY_CONFIG_KEY", cfg.readonly_config_key}};
   }
 
   //! CONFIG_LOAD
@@ -73,10 +73,10 @@ namespace raven
     std::uint32_t config_id;
   };
 
-  void to_json(raven::json::json &j, const config_load_answer &cfg)
+  void to_json(raven::json::json &json_data, const config_load_answer &cfg)
   {
-      j = {{"CONFIG_NAME", cfg.config_name},
-           {"CONFIG_ID",   cfg.config_id}};
+      json_data = {{"CONFIG_NAME", cfg.config_name},
+                   {"CONFIG_ID",   cfg.config_id}};
   }
 
   //! CONFIG_UNLOAD
@@ -152,9 +152,9 @@ namespace raven
     std::string setting_value;
   };
 
-  void to_json(raven::json::json &j, const setting_get_answer &cfg)
+  void to_json(raven::json::json &json_data, const setting_get_answer &cfg)
   {
-      j = {{"SETTING_VALUE", cfg.setting_value}};
+      json_data = {{"SETTING_VALUE", cfg.setting_value}};
   }
 
   //! ALIAS_SET
