@@ -33,6 +33,9 @@ namespace LibConfig
 
        /// returned if an error occur when connecting
        CONNECTION_ERROR,
+
+       /// returned by getReadOnlyConfigKey or getConfigKey if the requested key wasn't set up
+       KEY_NOT_INITIALIZED,
       };
 
     ///
@@ -101,7 +104,7 @@ namespace LibConfig
     /// \param 'returnedConfig' if the function succeeds, a pointer is written to a new 'struct Config'
     /// \return error code
     ///
-    enum ReturnedValue getConfig(struct Key const* key, struct Config **returnedConfig);
+    enum ReturnedValue getConfig(struct Key key, struct Config **returnedConfig);
 
     ///
     /// \brief get const config from key
@@ -109,7 +112,7 @@ namespace LibConfig
     /// \param 'returnedConfig' if the function succeeds, a pointer is written to a new 'struct Config'
     /// \return error code
     ///
-    enum ReturnedValue getReadOnlyConfig(struct Key const* key, struct Config const **returnedConfig);
+    enum ReturnedValue getReadOnlyConfig(struct Key key, struct Config const **returnedConfig);
 
     ///
     /// \brief release the config, freeing the underlying memory
@@ -120,12 +123,20 @@ namespace LibConfig
     void releaseConfig(struct Config const *);
 
     ///
-    /// \brief get the key of the given config
+    /// \brief get the Read/Write key of the given config
     /// \param the config
-    /// \param 'configKey' if the function succeeds, contain the config key
+    /// \param 'configKey' if the function succeeds, contain the Read/Write config key
     /// \return error code
     ///
     enum ReturnedValue getConfigKey(struct Config const *, struct Key *configKey);
+
+    ///
+    /// \brief get the ReadOnly key of the given config
+    /// \param the config
+    /// \param 'configKey' if the function succeeds, contain the ReadOnly config key
+    /// \return error code
+    ///
+    enum ReturnedValue getReadOnlyConfigKey(struct Config const *, struct Key *configKey);
 
     ///
     /// \brief basic operation to add a new setting or modify an existing one

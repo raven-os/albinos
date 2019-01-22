@@ -16,7 +16,7 @@ LibConfig::ReturnedValue LibConfig::createConfig(char const *configName, Config 
   return SUCCESS;
 }
 
-LibConfig::ReturnedValue LibConfig::getConfig(Key const* key, Config **returnedConfig)
+LibConfig::ReturnedValue LibConfig::getConfig(Key key, Config **returnedConfig)
 {
   try {
     *returnedConfig = new Config(key);
@@ -27,7 +27,7 @@ LibConfig::ReturnedValue LibConfig::getConfig(Key const* key, Config **returnedC
   return SUCCESS;
 }
 
-LibConfig::ReturnedValue LibConfig::getReadOnlyConfig(Key const* key, Config const **returnedConfig)
+LibConfig::ReturnedValue LibConfig::getReadOnlyConfig(Key key, Config const **returnedConfig)
 {
   try {
     *returnedConfig = new Config(key);
@@ -45,9 +45,18 @@ void LibConfig::releaseConfig(Config const *config)
 
 LibConfig::ReturnedValue LibConfig::getConfigKey(Config const *config, Key *configKey)
 {
+  configKey->data = nullptr;
   if (!config || !configKey)
     return BAD_PARAMETERS;
   return config->getKey(configKey);
+}
+
+LibConfig::ReturnedValue LibConfig::getReadOnlyConfigKey(Config const *config, Key *configKey)
+{
+  configKey->data = nullptr;
+  if (!config || !configKey)
+    return BAD_PARAMETERS;
+  return config->getReadOnlyKey(configKey);
 }
 
 LibConfig::ReturnedValue LibConfig::setSetting(Config *config, char const *name, char const *value)

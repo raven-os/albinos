@@ -24,10 +24,8 @@ namespace LibConfig
 
     using json = nlohmann::json;
 
-    json response;
-
     std::string name;
-    std::string configId;
+    uint32_t configId;
     std::optional<Key> key;
     std::optional<Key> roKey;
 
@@ -39,13 +37,16 @@ namespace LibConfig
 
     void parseResponse(json const &data);
 
+    void loadConfig(Key const &givenKey);
+
   public:
 
     Config(std::string const &name);
-    Config(Key const *key);
+    Config(Key const &key);
     ~Config();
 
     ReturnedValue getKey(Key *configKey) const;
+    ReturnedValue getReadOnlyKey(Key *configKey) const;
     ReturnedValue getSettingValue(char const *settingName, char *value, size_t valueSize) const;
     ReturnedValue getSettingSize(char const *settingName, size_t *size) const;
 
