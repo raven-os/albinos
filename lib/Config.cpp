@@ -9,7 +9,7 @@ void LibConfig::Config::parseResponse(json const &data)
   std::string status;
   try {
     status = data.at("REQUEST_STATE").get<std::string>();
-  } catch (std::exception) {
+  } catch (...) {
     // if the data received do not contain 'REQUEST_STATE', it's an event
     std::string setting = data.at("SETTING_NAME").get<std::string>();
     std::string newValue = data.at("UPDATE").get<std::string>();
@@ -33,14 +33,14 @@ void LibConfig::Config::initSocket()
   socket->once<uvw::ConnectEvent>([](const uvw::ConnectEvent&, uvw::PipeHandle&) {
     std::cout << "All succeed" << std::endl;
   });
-  socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &){
+  socket->on<uvw::DataEvent>([this](const uvw::DataEvent &dataEvent, uvw::PipeHandle &){
     std::cout << "Data received" << std::endl;
-    std::cout << std::string(data.data.get(), data.length) << std::endl;
+    std::cout << std::string(dataEvent.data.get(), dataEvent.length) << std::endl;
     try {
-      parseResponse(json::parse(std::string(data.data.get(), data.length)));
-    } catch (std::exception) {
+      parseResponse(json::parse(std::string(dataEvent.data.get(), dataEvent.length)));
+    } catch (...) {
       std::cout << "Error in data received" << std::endl;
-      // throw std::exception();
+      // throw ;
     }
   });
   socket->on<uvw::WriteEvent>([this](const uvw::WriteEvent &, uvw::PipeHandle &sock){
@@ -71,14 +71,22 @@ void LibConfig::Config::loadConfig(Key const &givenKey)
   json request;
   request["REQUEST_NAME"] = "CONFIG_LOAD";
 
-  if (givenKey.type == LibConfig::READ_WRITE) {
+  switch (givenKey.type) {
+
+  case LibConfig::READ_WRITE:
     key = {new char[givenKey.size], givenKey.size, LibConfig::READ_WRITE};
     std::memcpy(key->data, givenKey.data, givenKey.size);
     request["CONFIG_KEY"] = std::string(static_cast<char*>(key->data), key->size);
-  } else {
+    break;
+
+  case LibConfig::READ_ONLY:
     roKey = {new char[givenKey.size], givenKey.size, LibConfig::READ_ONLY};
     std::memcpy(key->data, givenKey.data, givenKey.size);
     request["READONLY_CONFIG_KEY"] = std::string(static_cast<char*>(roKey->data), roKey->size);
+    break;
+
+  default:
+    assert(false); // unknow key type
   }
   sendJson(request);
 }
