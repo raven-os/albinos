@@ -8,7 +8,7 @@ namespace LibConfig
 {
   struct KeyWrapper
   {
-    std::unique_ptr<char> data;
+    std::unique_ptr<char[]> data;
     size_t size;
     KeyType type;
 
@@ -18,6 +18,30 @@ namespace LibConfig
       std::memcpy(other.data, data.get(), size);
       other.size = size;
       other.type = READ_WRITE;
+    }
+
+    void operator=(Key &&other)
+    {
+      size = other.size;
+      type = other.type;
+      data.reset((char*)other.data);
+    }
+
+    void operator=(KeyWrapper &&other)
+    {
+      size = other.size;
+      type = other.type;
+      data.reset(other.data.release());
+    }
+
+    KeyWrapper(KeyWrapper &&other)
+    {
+      *this = other;
+    }
+
+    KeyWrapper(Key &&other)
+    {
+      *this = other;
     }
 
     void operator=(const Key &other)
