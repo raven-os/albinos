@@ -15,6 +15,7 @@
 # include "Libconfig.h"
 # include "uvw.hpp"
 # include "json.hpp"
+# include "KeyWrapper.hpp"
 
 namespace LibConfig
 {
@@ -26,8 +27,8 @@ namespace LibConfig
 
     std::string name;
     uint32_t configId;
-    std::optional<Key> key;
-    std::optional<Key> roKey;
+    std::optional<KeyWrapper> key;
+    std::optional<KeyWrapper> roKey;
 
     std::shared_ptr<uvw::Loop> socketLoop{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> socket{socketLoop->resource<uvw::PipeHandle>()};
@@ -37,7 +38,7 @@ namespace LibConfig
 
     void parseResponse(json const &data);
 
-    void loadConfig(Key const &givenKey);
+    void loadConfig(KeyWrapper const &givenKey);
 
   public:
 

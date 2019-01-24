@@ -66,7 +66,7 @@ void LibConfig::Config::sendJson(const json& data)
 ///
 /// \todo get response and set-up name and id
 ///
-void LibConfig::Config::loadConfig(Key const &givenKey)
+void LibConfig::Config::loadConfig(KeyWrapper const &givenKey)
 {
   json request;
   request["REQUEST_NAME"] = "CONFIG_LOAD";
@@ -74,15 +74,13 @@ void LibConfig::Config::loadConfig(Key const &givenKey)
   switch (givenKey.type) {
 
   case LibConfig::READ_WRITE:
-    key = {new char[givenKey.size], givenKey.size, LibConfig::READ_WRITE};
-    std::memcpy(key->data, givenKey.data, givenKey.size);
-    request["CONFIG_KEY"] = std::string(static_cast<char*>(key->data), key->size);
+    key = givenKey;
+    request["CONFIG_KEY"] = std::string(key->data.get(), key->size);
     break;
 
   case LibConfig::READ_ONLY:
-    roKey = {new char[givenKey.size], givenKey.size, LibConfig::READ_ONLY};
-    std::memcpy(key->data, givenKey.data, givenKey.size);
-    request["READONLY_CONFIG_KEY"] = std::string(static_cast<char*>(roKey->data), roKey->size);
+    roKey = givenKey;
+    request["READONLY_CONFIG_KEY"] = std::string(roKey->data.get(), roKey->size);
     break;
 
   default:
@@ -121,10 +119,6 @@ LibConfig::Config::~Config()
     request["CONFIG_ID"] = configId;
     sendJson(request);
     socketLoop->run<uvw::Loop::Mode::ONCE>();
-    if (key)
-      delete key->data;
-    if (roKey)
-      delete roKey->data;
   }
 }
 
@@ -132,10 +126,7 @@ LibConfig::ReturnedValue LibConfig::Config::getKey(Key *configKey) const
 {
   if (!key)
     return KEY_NOT_INITIALIZED;
-  configKey->data = new char[key->size];
-  std::memcpy(configKey->data, key->data, key->size);
-  configKey->size = key->size;
-  configKey->type = READ_WRITE;
+  key->dupKey(*configKey);
   return SUCCESS;
 }
 
@@ -143,10 +134,7 @@ LibConfig::ReturnedValue LibConfig::Config::getReadOnlyKey(Key *configKey) const
 {
   if (!roKey)
     return KEY_NOT_INITIALIZED;
-  configKey->data = new char[roKey->size];
-  std::memcpy(configKey->data, roKey->data, roKey->size);
-  configKey->size = roKey->size;
-  configKey->type = READ_ONLY;
+  roKey->dupKey(*configKey);
   return SUCCESS;
 }
 
