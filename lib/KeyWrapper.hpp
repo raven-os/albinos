@@ -3,6 +3,7 @@
 # include "Libconfig.h"
 # include <cstring>
 # include <memory>
+# include <iostream>
 
 namespace LibConfig
 {
@@ -68,6 +69,21 @@ namespace LibConfig
     KeyWrapper(const Key &other)
     {
       *this = other;
+    }
+
+    KeyWrapper(const std::string &dataStr, KeyType t)
+    {
+      size = dataStr.length();
+      data.reset(new char[size]);
+      std::memcpy(data.get(), dataStr.c_str(), size);
+      type = t;
+    }
+
+    void print(void) const
+    {
+      std::cout << "SIZE : " << size << std::endl;
+      std::cout << "KEY : " << std::string(data.get(), size) << std::endl;
+      std::cout << "TYPE : " << (type == READ_WRITE ? "READ_WRITE" : "READ_ONLY") << std::endl;
     }
 
   };

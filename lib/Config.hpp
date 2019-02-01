@@ -27,18 +27,21 @@ namespace LibConfig
 
     std::string name;
     uint32_t configId;
+    std::string lastRequestedValue;
+
     std::optional<KeyWrapper> key;
     std::optional<KeyWrapper> roKey;
 
     std::shared_ptr<uvw::Loop> socketLoop{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> socket{socketLoop->resource<uvw::PipeHandle>()};
+    std::shared_ptr<uvw::TimerHandle> timer{socketLoop->resource<uvw::TimerHandle>()};
 
     void initSocket();
-    void sendJson(json const &data);
+    void sendJson(json const &data) const;
 
     void parseResponse(json const &data);
 
-    void loadConfig(KeyWrapper const &givenKey);
+    void loadConfig(KeyWrapper givenKey);
 
   public:
 

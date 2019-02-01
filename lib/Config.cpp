@@ -8,7 +8,8 @@ void LibConfig::Config::parseResponse(json const &data)
 {
   std::string status;
   try {
-    status = data.at("REQUEST_STATE").get<std::string>();
+    //status = data.at("REQUEST_STATE").get<std::string>();
+    status = "STILL_NO_STATUS_SENT";
   } catch (...) {
     // if the data received do not contain 'REQUEST_STATE', it's an event
     std::string setting = data.at("SETTING_NAME").get<std::string>();
@@ -16,7 +17,29 @@ void LibConfig::Config::parseResponse(json const &data)
     bool isDelete = data.at("DELETE").get<bool>();
     return;
   }
-  std::cout << "request status " << status << std::endl;
+  // std::cout << "request status " << status << std::endl;
+
+  try {
+    lastRequestedValue = data.at("SETTING_VALUE").get<std::string>();
+    return;
+  } catch (...) {
+  }
+
+  try {
+    name = data.at("CONFIG_NAME").get<std::string>();
+    configId = data.at("CONFIG_ID").get<uint32_t>();
+    return;
+  } catch (...) {
+  }
+
+  try {
+    std::string keyStr = data.at("CONFIG_KEY").get<std::string>();
+    std::string roKeyStr = data.at("READONLY_CONFIG_KEY").get<std::string>();
+    key.emplace(keyStr, READ_WRITE);
+    roKey.emplace(roKeyStr, READ_ONLY);
+    return;
+  } catch (...) {
+  }
 }
 
 ///
@@ -33,27 +56,35 @@ void LibConfig::Config::initSocket()
   socket->once<uvw::ConnectEvent>([](const uvw::ConnectEvent&, uvw::PipeHandle&) {
     std::cout << "All succeed" << std::endl;
   });
-  socket->on<uvw::DataEvent>([this](const uvw::DataEvent &dataEvent, uvw::PipeHandle &){
+  socket->on<uvw::DataEvent>([this](const uvw::DataEvent &dataEvent, uvw::PipeHandle &) {
+    std::string response = std::string(dataEvent.data.get(), dataEvent.length);
     std::cout << "Data received" << std::endl;
-    std::cout << std::string(dataEvent.data.get(), dataEvent.length) << std::endl;
+    std::cout << response << std::endl;
     try {
-      parseResponse(json::parse(std::string(dataEvent.data.get(), dataEvent.length)));
+      parseResponse(json::parse(response));
     } catch (...) {
       std::cout << "Error in data received" << std::endl;
       // throw ;
     }
   });
-  socket->on<uvw::WriteEvent>([this](const uvw::WriteEvent &, uvw::PipeHandle &sock){
+  socket->on<uvw::WriteEvent>([this](const uvw::WriteEvent &, uvw::PipeHandle &sock) {
     std::cout << "Data sent" << std::endl;
     sock.read();
+    // if the service doesn't respond after 200ms, stop the loop
+    timer->start(std::chrono::duration<uint64_t, std::milli>(200), std::chrono::duration<uint64_t, std::milli>(1000));
     socketLoop->run<uvw::Loop::Mode::ONCE>();
+  });
+  timer->on<uvw::TimerEvent>([this](const uvw::TimerEvent&, uvw::TimerHandle &handle) {
+    //std::cout << "Timeout" << std::endl;
+    socketLoop->stop();
+    handle.stop();
   });
   std::cout << "Trying to connect to " << socketPath << std::endl;
   socket->connect(socketPath);
   socketLoop->run<uvw::Loop::Mode::ONCE>();
 }
 
-void LibConfig::Config::sendJson(const json& data)
+void LibConfig::Config::sendJson(const json& data) const
 {
   std::string requestStr = data.dump();
   char *buff = new char[requestStr.size()];
@@ -63,10 +94,7 @@ void LibConfig::Config::sendJson(const json& data)
   socketLoop->run<uvw::Loop::Mode::ONCE>();
 }
 
-///
-/// \todo get response and set-up name and id
-///
-void LibConfig::Config::loadConfig(KeyWrapper const &givenKey)
+void LibConfig::Config::loadConfig(KeyWrapper givenKey)
 {
   json request;
   request["REQUEST_NAME"] = "CONFIG_LOAD";
@@ -89,9 +117,6 @@ void LibConfig::Config::loadConfig(KeyWrapper const &givenKey)
   sendJson(request);
 }
 
-///
-/// \todo get response and set-up keys
-///
 LibConfig::Config::Config(std::string const &name)
   : name(name)
 {
@@ -100,7 +125,6 @@ LibConfig::Config::Config(std::string const &name)
   request["CONFIG_NAME"] = name;
   request["REQUEST_NAME"] = "CONFIG_CREATE";
   sendJson(request);
-  // key must be setted up there
   loadConfig(*key);
 }
 
@@ -118,7 +142,7 @@ LibConfig::Config::~Config()
     request["REQUEST_NAME"] = "CONFIG_UNLOAD";
     request["CONFIG_ID"] = configId;
     sendJson(request);
-    socketLoop->run<uvw::Loop::Mode::ONCE>();
+    socket->close();
   }
 }
 
@@ -139,13 +163,16 @@ LibConfig::ReturnedValue LibConfig::Config::getReadOnlyKey(Key *configKey) const
 }
 
 ///
-/// \todo implementation
+/// \todo handle error
 ///
 LibConfig::ReturnedValue LibConfig::Config::getSettingValue(char const *settingName, char *value, size_t valueSize) const
 {
-  (void)settingName;
-  (void)value;
-  (void)valueSize;
+  json request;
+  request["REQUEST_NAME"] = "SETTING_GET";
+  request["CONFIG_ID"] = configId;
+  request["SETTING_NAME"] = settingName;
+  sendJson(request);
+  std::memcpy(value, lastRequestedValue.c_str(), (valueSize < lastRequestedValue.length() ? valueSize : lastRequestedValue.length()));
   return SUCCESS;
 }
 
