@@ -172,7 +172,7 @@ LibConfig::ReturnedValue LibConfig::Config::getSettingValue(char const *settingN
   request["CONFIG_ID"] = configId;
   request["SETTING_NAME"] = settingName;
   sendJson(request);
-  std::memcpy(value, lastRequestedValue.c_str(), (valueSize < lastRequestedValue.length() ? valueSize : lastRequestedValue.length()));
+  std::memcpy(value, lastRequestedValue.c_str(), std::min(valueSize, lastRequestedValue.length()));
   return SUCCESS;
 }
 
