@@ -71,7 +71,7 @@ void LibConfig::Config::initSocket()
     std::cout << "Data sent" << std::endl;
     sock.read();
     // if the service doesn't respond after 200ms, stop the loop
-    timer->start(std::chrono::duration<uint64_t, std::milli>(200), std::chrono::duration<uint64_t, std::milli>(1000));
+    timer->start(writeTimeout, std::chrono::duration<uint64_t, std::milli>(1000));
     socketLoop->run<uvw::Loop::Mode::ONCE>();
   });
   timer->on<uvw::TimerEvent>([this](const uvw::TimerEvent&, uvw::TimerHandle &handle) {
