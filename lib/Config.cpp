@@ -94,7 +94,7 @@ void LibConfig::Config::sendJson(const json& data) const
   socketLoop->run<uvw::Loop::Mode::ONCE>();
 }
 
-void LibConfig::Config::loadConfig(KeyWrapper givenKey)
+void LibConfig::Config::loadConfig(KeyWrapper const &givenKey)
 {
   json request;
   request["REQUEST_NAME"] = "CONFIG_LOAD";

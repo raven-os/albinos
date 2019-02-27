@@ -55,6 +55,8 @@ namespace LibConfig
 
     void operator=(const KeyWrapper &other)
     {
+      if (this == &other)
+	return ;
       size = other.size;
       type = other.type;
       data.reset(new char[size]);
@@ -72,11 +74,11 @@ namespace LibConfig
     }
 
     KeyWrapper(const std::string &dataStr, KeyType t)
+      : data(new char[dataStr.length()])
+      , size(dataStr.length())
+      , type(t)
     {
-      size = dataStr.length();
-      data.reset(new char[size]);
       std::memcpy(data.get(), dataStr.c_str(), size);
-      type = t;
     }
 
     void print(void) const

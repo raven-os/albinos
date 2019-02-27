@@ -42,7 +42,7 @@ namespace LibConfig
 
     void parseResponse(json const &data);
 
-    void loadConfig(KeyWrapper givenKey);
+    void loadConfig(KeyWrapper const &givenKey);
 
   public:
 
