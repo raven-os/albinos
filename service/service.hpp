@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <utility>
 #include <unordered_map>
 #include <iostream>
 #include <iomanip>
@@ -149,6 +150,27 @@ namespace raven
     }
 
     //! Helpers
+    void send_answer(json::json &response_json_data, uvw::PipeHandle &sock) noexcept
+    {
+        auto response_str = response_json_data.dump();
+        sock.write(response_str.data(), static_cast<unsigned int>(response_str.size()));
+    }
+
+    template<typename ProtocolType>
+    void prepare_answer(uvw::PipeHandle &sock, const ProtocolType& answer) noexcept
+    {
+        json::json response_json_data;
+        to_json(response_json_data, answer);
+        send_answer(response_json_data, sock);
+    }
+
+    void prepare_answer(uvw::PipeHandle &sock) noexcept
+    {
+        json::json response_json_data;
+        response_json_data[request_state_keyword] = convert_request_state.at(request_state::success);
+        send_answer(response_json_data, sock);
+    }
+
     template <typename Request>
     Request fill_request(json::json &json_data)
     {
@@ -165,11 +187,8 @@ namespace raven
         // TODO: Insert in SQL
 
         // TODO: Send config key create by SQL (arthur work)
-        const config_create_answer answer{"Foo", "Foo"};
-        json::json response_json_data;
-        to_json(response_json_data, answer);
-        auto response_str = response_json_data.dump();
-        sock.write(response_str.data(), static_cast<unsigned int>(response_str.size()));
+        const config_create_answer answer{"Foo", "Foo", convert_request_state.at(request_state::success)};
+        prepare_answer(sock, answer);
     }
 
     void load_config(json::json &json_data, uvw::PipeHandle &sock)
@@ -185,16 +204,15 @@ namespace raven
         //! TODO: load from sql
 
         //! TODO: change after arthur work
-        const config_load_answer answer{"Foo", 42};
-        json::json response_json_data;
-        to_json(response_json_data, answer);
-        sock.write(response_json_data.dump().data(), static_cast<unsigned int>(response_json_data.dump().size()));
+        const config_load_answer answer{"Foo", 42, convert_request_state.at(request_state::success)};
+        prepare_answer(sock, answer);
     }
 
     void unload_config(json::json &json_data, uvw::PipeHandle &sock)
     {
         auto cfg = fill_request<config_unload>(json_data);
         std::cout << "cfg.id: " << cfg.id << std::endl;
+        prepare_answer(sock);
     }
 
     void include_config(json::json &json_data, uvw::PipeHandle &sock)
@@ -203,6 +221,7 @@ namespace raven
         std::cout << "cfg.id: " << cfg.id << std::endl;
         std::cout << "cfg.src: " << cfg.src << std::endl;
         std::cout << "cfg.dst: " << cfg.dst << std::endl;
+        prepare_answer(sock);
     }
 
     void update_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -211,6 +230,7 @@ namespace raven
         std::cout << "cfg.id: " << cfg.id << std::endl;
         std::cout << "cfg.setting_name: " << cfg.setting_name << std::endl;
         std::cout << "cfg.setting_value: " << cfg.setting_value << std::endl;
+        prepare_answer(sock);
     }
 
     void remove_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -218,6 +238,7 @@ namespace raven
         auto cfg = fill_request<setting_remove>(json_data);
         std::cout << "cfg.id: " << cfg.id << std::endl;
         std::cout << "cfg.setting_name: " << cfg.setting_name << std::endl;
+        prepare_answer(sock);
     }
 
     void get_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -229,10 +250,8 @@ namespace raven
         //! TODO: load from sql
 
         //! TODO: change after arthur work
-        const setting_get_answer answer{"FooBar"};
-        json::json response_json_data;
-        to_json(response_json_data, answer);
-        sock.write(response_json_data.dump().data(), static_cast<unsigned int>(response_json_data.dump().size()));
+        const setting_get_answer answer{"FooBar", convert_request_state.at(request_state::success)};
+        prepare_answer(sock, answer);
     }
 
     void set_alias(json::json &json_data, uvw::PipeHandle &sock)
@@ -241,6 +260,7 @@ namespace raven
         std::cout << "cfg.id: " << cfg.id << std::endl;
         std::cout << "cfg.setting_name: " << cfg.setting_name << std::endl;
         std::cout << "cfg.alias_name: " << cfg.alias_name << std::endl;
+        prepare_answer(sock);
     }
 
     void unset_alias(json::json &json_data, uvw::PipeHandle &sock)
@@ -248,6 +268,7 @@ namespace raven
         auto cfg = fill_request<alias_unset>(json_data);
         std::cout << "cfg.id: " << cfg.id << std::endl;
         std::cout << "cfg.alias_name: " << cfg.alias_name << std::endl;
+        prepare_answer(sock);
     }
 
     void subscribe_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -260,6 +281,7 @@ namespace raven
         if (cfg.alias_name) {
             std::cout << "cfg.alias_name: " << cfg.alias_name.value() << std::endl;
         }
+        prepare_answer(sock);
     }
 
     void unsubscribe_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -272,6 +294,7 @@ namespace raven
         if (cfg.alias_name) {
             std::cout << "cfg.alias_name: " << cfg.alias_name.value() << std::endl;
         }
+        prepare_answer(sock);
     }
 
     std::shared_ptr<uvw::Loop> uv_loop_{uvw::Loop::getDefault()};
@@ -299,7 +322,7 @@ namespace raven
         CHECK(service_.clean_socket());
     }
 
-    static void test_client_server_communication(json::json request, json::json expected_answer) noexcept
+    static void test_client_server_communication(json::json &&request, json::json &&expected_answer) noexcept
     {
         service service_;
         CHECK_FALSE(service_.create_socket());
@@ -316,6 +339,8 @@ namespace raven
         client->once<uvw::DataEvent>([&expected_answer](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
             std::string_view data_str(data.data.get(), data.length);
             auto json_data = json::json::parse(data_str);
+            auto json_data_str = json_data.dump();
+            std::cout << "json answer:\n" << json_data_str << std::endl;
             CHECK(json_data == expected_answer);
             sock.close();
         });
@@ -330,14 +355,108 @@ namespace raven
     {
         auto data = R"({"REQUEST_NAME": "HELLOBRUH"})"_json;
         auto answer = R"({"REQUEST_STATE":"UNKNOWN_REQUEST"})"_json;
-        test_client_server_communication(data, answer);
+        test_client_server_communication(std::move(data), std::move(answer));
     }
 
     TEST_CASE_CLASS ("create_config request")
     {
         auto data = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
         auto answer = R"({"CONFIG_KEY":"Foo","READONLY_CONFIG_KEY":"Foo","REQUEST_STATE":"SUCCESS"})"_json;
-        test_client_server_communication(data, answer);
+        test_client_server_communication(std::move(data), std::move(answer));
+    }
+
+    TEST_CASE_CLASS ("load_config request")
+    {
+            SUBCASE("read only key") {
+            auto data = R"({"REQUEST_NAME": "CONFIG_LOAD","READONLY_CONFIG_KEY": "42Key"})"_json;
+            auto answer = R"({"CONFIG_NAME":"Foo","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer));
+        }
+
+            SUBCASE("non read only key") {
+            auto data = R"({"REQUEST_NAME": "CONFIG_LOAD","CONFIG_KEY": "42Key"})"_json;
+            auto answer = R"({"CONFIG_NAME":"Foo","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer));
+        }
+    }
+
+    TEST_CASE_CLASS ("unload_config request")
+    {
+        auto data = R"({"REQUEST_NAME": "CONFIG_UNLOAD","CONFIG_ID": 42})"_json;
+        auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+        test_client_server_communication(std::move(data), std::move(answer));
+    }
+
+    TEST_CASE_CLASS ("include_config request")
+    {
+        auto data = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42,"SRC": "config_foo.json","DST": "config_bar.json"})"_json;
+        auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+        test_client_server_communication(std::move(data), std::move(answer));
+    }
+
+    TEST_CASE_CLASS ("update_setting request")
+    {
+        auto data = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTING_NAME": "foo","SETTING_VALUE": "bar"})"_json;
+        auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+        test_client_server_communication(std::move(data), std::move(answer));
+    }
+
+    TEST_CASE_CLASS ("remove_setting request")
+    {
+        auto data = R"({"REQUEST_NAME": "SETTING_REMOVE","CONFIG_ID": 43,"SETTING_NAME": "foobar"})"_json;
+        auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+        test_client_server_communication(std::move(data), std::move(answer));
+    }
+
+    TEST_CASE_CLASS ("get_setting request")
+    {
+        auto data = R"({"REQUEST_NAME": "SETTING_GET","CONFIG_ID": 43,"SETTING_NAME": "foobar"})"_json;
+        auto answer = R"({"SETTING_VALUE": "FooBar", "REQUEST_STATE":"SUCCESS"})"_json;
+        test_client_server_communication(std::move(data), std::move(answer));
+    }
+
+    TEST_CASE_CLASS ("alias_set request")
+    {
+        auto data = R"({"REQUEST_NAME": "ALIAS_SET","CONFIG_ID": 43,"SETTING_NAME": "foobar","ALIAS_NAME": "barfoo"})"_json;
+        auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+        test_client_server_communication(std::move(data), std::move(answer));
+    }
+
+    TEST_CASE_CLASS ("alias_unset request")
+    {
+        auto data = R"({"REQUEST_NAME": "ALIAS_UNSET","CONFIG_ID": 43,"ALIAS_NAME": "barfoo"})"_json;
+        auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+        test_client_server_communication(std::move(data), std::move(answer));
+    }
+
+    TEST_CASE_CLASS ("setting_subscribe request")
+    {
+            SUBCASE("without alias") {
+            auto data = R"({"REQUEST_NAME": "SUBSCRIBE_SETTING","CONFIG_ID": 43,"SETTING_NAME": "foobar"})"_json;
+            auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer));
+        }
+
+            SUBCASE("with alias") {
+            auto data = R"({"REQUEST_NAME": "SUBSCRIBE_SETTING","CONFIG_ID": 43,"ALIAS_NAME": "barfoo"})"_json;
+            auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer));
+        }
+    }
+
+    TEST_CASE_CLASS ("setting_unsubscribe request")
+    {
+            SUBCASE("without alias") {
+            auto data = R"({"REQUEST_NAME": "UNSUBSCRIBE_SETTING","CONFIG_ID": 43,"SETTING_NAME": "foobar"})"_json;
+            auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer));
+        }
+
+            SUBCASE("with alias") {
+            auto data = R"({"REQUEST_NAME": "UNSUBSCRIBE_SETTING","CONFIG_ID": 43,"ALIAS_NAME": "barfoo"})"_json;
+            auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer));
+        }
     }
 
 #endif
