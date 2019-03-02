@@ -20,7 +20,7 @@ namespace raven
     {
         server_->on<uvw::ErrorEvent>([this](auto const &error_event, auto &) {
             std::cerr << error_event.what() << std::endl;
-            this->is_error_occured = true;
+            this->error_occurred = true;
         });
 
         server_->on<uvw::ListenEvent>([this](uvw::ListenEvent const &, uvw::PipeHandle &handle) {
@@ -143,9 +143,9 @@ namespace raven
         std::string socket = socket_path_.string();
         std::cout << "binding to socket: " << socket << std::endl;
         server_->bind(socket);
-        if (this->is_error_occured) return this->is_error_occured;
+        if (this->error_occurred) return this->error_occurred;
         server_->listen();
-        return this->is_error_occured;
+        return this->error_occurred;
     }
 
     //! Helpers
@@ -282,7 +282,7 @@ namespace raven
     std::shared_ptr<uvw::Loop> uv_loop_{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> server_{uv_loop_->resource<uvw::PipeHandle>()};
     std::filesystem::path socket_path_{(std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock")};
-    bool is_error_occured{false};
+    bool error_occurred{false};
 
 #ifdef DOCTEST_LIBRARY_INCLUDED
     TEST_CASE_CLASS ("test create socket")
