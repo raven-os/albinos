@@ -233,7 +233,7 @@ namespace raven
     void run() noexcept
     {
         clean_socket();
-        std::string socket = (std::filesystem::temp_directory_path() / "raven-os_service_libconfig.sock").string();
+        std::string socket = (std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock").string();
         std::cout << "binding to socket: " << socket << std::endl;
         server_->bind(socket);
         server_->listen();
@@ -243,7 +243,7 @@ namespace raven
     //! In case that the service have been stopped, we want to remove the old socket and create a new one.
     void clean_socket() noexcept
     {
-        auto socket_path = std::filesystem::temp_directory_path() / "raven-os_service_libconfig.sock";
+        auto socket_path = std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock";
         if (std::filesystem::exists(socket_path)) {
             std::cout << "socket: " << socket_path.string() << " already exist, removing" << std::endl;
             std::filesystem::remove(socket_path);
@@ -253,6 +253,6 @@ namespace raven
   private:
     std::shared_ptr<uvw::Loop> uv_loop_{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> server_{uv_loop_->resource<uvw::PipeHandle>()};
-    sqlite::database database_{sqlite::database("libconfig_db.sqlite")};
+    sqlite::database database_{sqlite::database("albinos_db.sqlite")};
   };
 }

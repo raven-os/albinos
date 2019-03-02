@@ -12,12 +12,12 @@
 # include <filesystem>
 # include <iostream>
 # include <optional>
-# include "Libconfig.h"
+# include "Albinos.h"
 # include "uvw.hpp"
 # include "json.hpp"
 # include "KeyWrapper.hpp"
 
-namespace LibConfig
+namespace Albinos
 {
   class Config
   {

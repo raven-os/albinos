@@ -8,9 +8,9 @@
 
 #pragma once
 
-# include "Libconfig.h"
+# include "Albinos.h"
 
-namespace LibConfig
+namespace Albinos
 {
   class Subscription
   {

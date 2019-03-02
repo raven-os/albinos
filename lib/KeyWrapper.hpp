@@ -1,11 +1,11 @@
 #pragma once
 
-# include "Libconfig.h"
+# include "Albinos.h"
 # include <cstring>
 # include <memory>
 # include <iostream>
 
-namespace LibConfig
+namespace Albinos
 {
   struct KeyWrapper
   {

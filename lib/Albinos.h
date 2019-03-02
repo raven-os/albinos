@@ -1,5 +1,5 @@
 //
-// Must be included to use the LibConfig
+// Must be included to use the Albinos
 //
 //
 
@@ -8,7 +8,7 @@
 # include <stddef.h>
 
 #ifdef __cplusplus
-namespace LibConfig
+namespace Albinos
 {
   extern "C" {
 #endif

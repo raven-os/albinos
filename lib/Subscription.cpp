@@ -3,7 +3,7 @@
 ///
 /// \todo implementation
 ///
-LibConfig::Subscription::Subscription()
+Albinos::Subscription::Subscription()
 {
 
 }
@@ -11,7 +11,7 @@ LibConfig::Subscription::Subscription()
 ///
 /// \todo implementation
 ///
-LibConfig::Subscription::~Subscription()
+Albinos::Subscription::~Subscription()
 {
 
 }

@@ -4,7 +4,7 @@
 /// \todo handle event
 /// \todo handle status
 ///
-void LibConfig::Config::parseResponse(json const &data)
+void Albinos::Config::parseResponse(json const &data)
 {
   std::string status;
   try {
@@ -45,9 +45,9 @@ void LibConfig::Config::parseResponse(json const &data)
 ///
 /// \todo better error management
 ///
-void LibConfig::Config::initSocket()
+void Albinos::Config::initSocket()
 {
-  std::string socketPath = (std::filesystem::temp_directory_path() / "raven-os_service_libconfig.sock").string();
+  std::string socketPath = (std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock").string();
 
   socket->on<uvw::ErrorEvent>([](const uvw::ErrorEvent&e, uvw::PipeHandle&) {
     std::cout << "Error" << std::endl;
@@ -84,7 +84,7 @@ void LibConfig::Config::initSocket()
   socketLoop->run<uvw::Loop::Mode::ONCE>();
 }
 
-void LibConfig::Config::sendJson(const json& data) const
+void Albinos::Config::sendJson(const json& data) const
 {
   std::string requestStr = data.dump();
   char *buff = new char[requestStr.size()];
@@ -94,19 +94,19 @@ void LibConfig::Config::sendJson(const json& data) const
   socketLoop->run<uvw::Loop::Mode::ONCE>();
 }
 
-void LibConfig::Config::loadConfig(KeyWrapper const &givenKey)
+void Albinos::Config::loadConfig(KeyWrapper const &givenKey)
 {
   json request;
   request["REQUEST_NAME"] = "CONFIG_LOAD";
 
   switch (givenKey.type) {
 
-  case LibConfig::READ_WRITE:
+  case Albinos::READ_WRITE:
     key = givenKey;
     request["CONFIG_KEY"] = std::string(key->data.get(), key->size);
     break;
 
-  case LibConfig::READ_ONLY:
+  case Albinos::READ_ONLY:
     roKey = givenKey;
     request["READONLY_CONFIG_KEY"] = std::string(roKey->data.get(), roKey->size);
     break;
@@ -117,7 +117,7 @@ void LibConfig::Config::loadConfig(KeyWrapper const &givenKey)
   sendJson(request);
 }
 
-LibConfig::Config::Config(std::string const &name)
+Albinos::Config::Config(std::string const &name)
   : name(name)
 {
   initSocket();
@@ -128,14 +128,14 @@ LibConfig::Config::Config(std::string const &name)
   loadConfig(*key);
 }
 
-LibConfig::Config::Config(Key const &givenKey)
+Albinos::Config::Config(Key const &givenKey)
   : name("")
 {
   initSocket();
   loadConfig(givenKey);
 }
 
-LibConfig::Config::~Config()
+Albinos::Config::~Config()
 {
   if (key || roKey) {
     json request;
@@ -146,7 +146,7 @@ LibConfig::Config::~Config()
   }
 }
 
-LibConfig::ReturnedValue LibConfig::Config::getKey(Key *configKey) const
+Albinos::ReturnedValue Albinos::Config::getKey(Key *configKey) const
 {
   if (!key)
     return KEY_NOT_INITIALIZED;
@@ -154,7 +154,7 @@ LibConfig::ReturnedValue LibConfig::Config::getKey(Key *configKey) const
   return SUCCESS;
 }
 
-LibConfig::ReturnedValue LibConfig::Config::getReadOnlyKey(Key *configKey) const
+Albinos::ReturnedValue Albinos::Config::getReadOnlyKey(Key *configKey) const
 {
   if (!roKey)
     return KEY_NOT_INITIALIZED;
@@ -165,7 +165,7 @@ LibConfig::ReturnedValue LibConfig::Config::getReadOnlyKey(Key *configKey) const
 ///
 /// \todo handle error
 ///
-LibConfig::ReturnedValue LibConfig::Config::getSettingValue(char const *settingName, char *value, size_t valueSize) const
+Albinos::ReturnedValue Albinos::Config::getSettingValue(char const *settingName, char *value, size_t valueSize) const
 {
   json request;
   request["REQUEST_NAME"] = "SETTING_GET";
@@ -179,7 +179,7 @@ LibConfig::ReturnedValue LibConfig::Config::getSettingValue(char const *settingN
 ///
 /// \todo implementation
 ///
-LibConfig::ReturnedValue LibConfig::Config::getSettingSize(char const *settingName, size_t *size) const
+Albinos::ReturnedValue Albinos::Config::getSettingSize(char const *settingName, size_t *size) const
 {
   (void)settingName;
   (void)size;
@@ -189,7 +189,7 @@ LibConfig::ReturnedValue LibConfig::Config::getSettingSize(char const *settingNa
 ///
 /// \todo implementation
 ///
-LibConfig::ReturnedValue LibConfig::Config::setSetting(char const *name, char const *value)
+Albinos::ReturnedValue Albinos::Config::setSetting(char const *name, char const *value)
 {
   (void)name;
   (void)value;
@@ -199,7 +199,7 @@ LibConfig::ReturnedValue LibConfig::Config::setSetting(char const *name, char co
 ///
 /// \todo implementation
 ///
-LibConfig::ReturnedValue LibConfig::Config::setSettingAlias(char const *name, char const *aliasName)
+Albinos::ReturnedValue Albinos::Config::setSettingAlias(char const *name, char const *aliasName)
 {
   (void)name;
   (void)aliasName;
@@ -209,7 +209,7 @@ LibConfig::ReturnedValue LibConfig::Config::setSettingAlias(char const *name, ch
 ///
 /// \todo implementation
 ///
-LibConfig::ReturnedValue LibConfig::Config::unsetAlias(char const *aliasName)
+Albinos::ReturnedValue Albinos::Config::unsetAlias(char const *aliasName)
 {
   (void)aliasName;
   return SUCCESS;
@@ -218,7 +218,7 @@ LibConfig::ReturnedValue LibConfig::Config::unsetAlias(char const *aliasName)
 ///
 /// \todo implementation
 ///
-LibConfig::ReturnedValue LibConfig::Config::removeSetting(char const *name)
+Albinos::ReturnedValue Albinos::Config::removeSetting(char const *name)
 {
   (void)name;
   return SUCCESS;
@@ -227,7 +227,7 @@ LibConfig::ReturnedValue LibConfig::Config::removeSetting(char const *name)
 ///
 /// \todo implementation
 ///
-LibConfig::ReturnedValue LibConfig::Config::include(Config const *inheritFrom)
+Albinos::ReturnedValue Albinos::Config::include(Config const *inheritFrom)
 {
   (void)inheritFrom;
   return SUCCESS;
@@ -236,7 +236,7 @@ LibConfig::ReturnedValue LibConfig::Config::include(Config const *inheritFrom)
 ///
 /// \todo implementation
 ///
-LibConfig::ReturnedValue LibConfig::Config::subscribeToSetting(char const *settingName, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, Subscription **subscription)
+Albinos::ReturnedValue Albinos::Config::subscribeToSetting(char const *settingName, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, Subscription **subscription)
 {
   (void)settingName;
   (void)data;

@@ -1,8 +1,8 @@
 # Creating and retrieving a configuration
 
-*For C++ developers, all functions and structs are in the "$LIB_NAME" namespace*
+*For C++ developers, all functions and structs are in the "Albinos" namespace*
 
-The first call to $LIB_NAME config is to create a new config giving it a name
+The first call to Albinos config is to create a new config giving it a name
 ```c
 
 struct Config *awesomeConfig;
@@ -104,7 +104,7 @@ if ((mySettingValue = malloc(size * sizeof(char))))
 A convenient more C++ friendly templated function is provided to subscribe to a setting
 ```cpp
 template<class Func>
-$LIB_NAME::Subscription $LIB_NAME::Config::subscribeToSetting(char const *name, Func &&func);
+Albinos::Subscription Albinos::Config::subscribeToSetting(char const *name, Func &&func);
 ```
 # TODO:
 - config removal / modification (currently one can only add, which is enough but may not be very expressive)
