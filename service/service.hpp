@@ -99,7 +99,7 @@ namespace raven
                     std::string command_order = json_data.at(raven::request_keyword).get<std::string>();
                     order_registry.at(command_order)(json_data, sock);
                 }
-                catch (const json::json::exception &error) {
+                catch (const std::exception &error) {
                     std::cerr << "error in received data: " << error.what() << std::endl;
                     json::json unknown_request_data = R"(
                                                           {"REQUEST_STATE": "UNKNOWN_REQUEST"}
@@ -160,12 +160,6 @@ namespace raven
 
     void create_config(json::json &json_data, uvw::PipeHandle &sock)
     {
-        json::json response_json_data = create_config(json_data);
-        sock.write(response_json_data.dump().data(), static_cast<unsigned int>(response_json_data.dump().size()));
-    }
-
-    json::json create_config(json::json &json_data)
-    {
         auto cfg = fill_request<config_create>(json_data);
         std::cout << "cfg.config_name: " << cfg.config_name << std::endl;
         // TODO: Insert in SQL
@@ -174,7 +168,8 @@ namespace raven
         const config_create_answer answer{"Foo", "Foo"};
         json::json response_json_data;
         to_json(response_json_data, answer);
-        return response_json_data;
+        auto response_str = response_json_data.dump();
+        sock.write(response_str.data(), static_cast<unsigned int>(response_str.size()));
     }
 
     void load_config(json::json &json_data, uvw::PipeHandle &sock)
@@ -304,45 +299,45 @@ namespace raven
         CHECK(service_.clean_socket());
     }
 
-    TEST_CASE_CLASS ("test create_config")
-    {
-        service service_;
-        json::json data = R"(
-                            {
-                                "REQUEST_NAME": "CONFIG_CREATE",
-                                "CONFIG_NAME": "ma_config"
-                            }
-                            )"_json;
-        json::json data_expected = R"(
-                                        {"CONFIG_KEY":"Foo","READONLY_CONFIG_KEY":"Foo","REQUEST_STATE":"SUCCESS"}
-                                     )"_json;
-        CHECK(service_.create_config(data) == data_expected);
-    }
-
-    TEST_CASE_CLASS ("check fake client")
+    static void test_client_server_communication(json::json request, json::json expected_answer) noexcept
     {
         service service_;
         CHECK_FALSE(service_.create_socket());
         auto loop = uvw::Loop::getDefault();
         auto client = loop->resource<uvw::PipeHandle>();
-        client->once<uvw::ConnectEvent>([](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+        client->once<uvw::ConnectEvent>([&request](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
             CHECK(handle.writable());
             CHECK(handle.readable());
-
-            auto dataTryWrite = std::unique_ptr<char[]>(new char[1]{'a'});
-            handle.tryWrite(std::move(dataTryWrite), 1);
-            auto dataWrite = std::unique_ptr<char[]>(new char[2]{'b', 'c'});
-            handle.write(std::move(dataWrite), 2);
+            auto request_str = request.dump();
+            handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+            handle.read();
         });
 
-        client->once<uvw::WriteEvent>([](const uvw::WriteEvent &, uvw::PipeHandle &handle) {
-            handle.close();
+        client->once<uvw::DataEvent>([&expected_answer](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+            std::string_view data_str(data.data.get(), data.length);
+            auto json_data = json::json::parse(data_str);
+            CHECK(json_data == expected_answer);
+            sock.close();
         });
 
         client->connect(service_.socket_path_.string());
 
-        CHECK(service_.clean_socket());
         loop->run();
+        CHECK(service_.clean_socket());
+    }
+
+    TEST_CASE_CLASS ("unknown request")
+    {
+        auto data = R"({"REQUEST_NAME": "HELLOBRUH"})"_json;
+        auto answer = R"({"REQUEST_STATE":"UNKNOWN_REQUEST"})"_json;
+        test_client_server_communication(data, answer);
+    }
+
+    TEST_CASE_CLASS ("create_config request")
+    {
+        auto data = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
+        auto answer = R"({"CONFIG_KEY":"Foo","READONLY_CONFIG_KEY":"Foo","REQUEST_STATE":"SUCCESS"})"_json;
+        test_client_server_communication(data, answer);
     }
 
 #endif
