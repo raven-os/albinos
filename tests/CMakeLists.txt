@@ -1,9 +1,6 @@
-###### CTest ######
-include(CTest)
-###################
-
-###### GTest ######
-find_package(GTest REQUIRED)
-
-set(SOURCES lib-test.cpp)
-CREATE_UNIT_TEST(lib-test libconfig: ${SOURCES})
+add_executable(service-test)
+target_sources(service-test PUBLIC service-test.cpp)
+target_include_directories(service-test PRIVATE ../vendor/doctest/doctest ../vendor/json ../service ../vendor/uvw/src ../vendor/uvw/deps/libuv/include ../vendor/strong_type/include/ ../vendor/expected)
+target_link_libraries(service-test ${filesystem_lib} uv_a)
+target_compile_options(service-test PUBLIC --coverage -fprofile-arcs -ftest-coverage)
+target_link_options(service-test PUBLIC --coverage)

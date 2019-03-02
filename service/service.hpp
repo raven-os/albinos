@@ -4,20 +4,150 @@
 
 #pragma once
 
-#include <iomanip>
-#include <string_view>
+#include <unordered_map>
 #include <iostream>
+#include <iomanip>
 #include <filesystem>
-#include <memory>
 #include <uvw.hpp>
-#include <sqlite_modern_cpp.h>
 #include "protocol.hpp"
 
 namespace raven
 {
   class service
   {
+  public:
+    service() noexcept
+    {
+        server_->on<uvw::ErrorEvent>([this](auto const &error_event, auto &) {
+            std::cerr << error_event.what() << std::endl;
+            this->is_error_occured = true;
+        });
+
+        server_->on<uvw::ListenEvent>([this](uvw::ListenEvent const &, uvw::PipeHandle &handle) {
+            std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
+            socket->on<uvw::CloseEvent>(
+                [this](uvw::CloseEvent const &, uvw::PipeHandle &handle) {
+                    std::cout << "socket closed." << std::endl;
+                    handle.close();
+#ifdef DOCTEST_LIBRARY_INCLUDED
+                    this->uv_loop_->stop();
+#endif
+                });
+
+            socket->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock) {
+                std::cout << "end event received" << std::endl;
+                sock.close();
+            });
+
+            socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                static const std::unordered_map<std::string, std::function<void(json::json &, uvw::PipeHandle &)>>
+                    order_registry
+                    {
+                        {
+                            "CONFIG_CREATE",       [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->create_config(json_data, sock);
+                        }},
+                        {
+                            "CONFIG_LOAD",         [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->load_config(json_data, sock);
+                        }},
+                        {
+                            "CONFIG_UNLOAD",       [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->unload_config(json_data, sock);
+                        }},
+                        {
+                            "CONFIG_INCLUDE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->include_config(json_data, sock);
+                        }},
+                        {
+                            "SETTING_UPDATE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->update_setting(json_data, sock);
+                        }},
+                        {
+                            "SETTING_REMOVE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->remove_setting(json_data, sock);
+                        }},
+                        {
+                            "SETTING_GET",         [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->get_setting(json_data, sock);
+                        }},
+                        {
+                            "ALIAS_SET",           [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->set_alias(json_data, sock);
+                        },
+                        },
+                        {
+                            "ALIAS_UNSET",         [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->unset_alias(json_data, sock);
+                        },
+                        },
+                        {
+                            "SUBSCRIBE_SETTING",   [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->subscribe_setting(json_data, sock);
+                        },
+                        },
+                        {
+                            "UNSUBSCRIBE_SETTING", [this](json::json &json_data, uvw::PipeHandle &sock) {
+                            this->unsubscribe_setting(json_data, sock);
+                        },
+                        }
+                    };
+
+                std::string_view data_str(data.data.get(), data.length);
+                try {
+                    auto json_data = json::json::parse(data_str);
+                    std::string command_order = json_data.at(raven::request_keyword).get<std::string>();
+                    order_registry.at(command_order)(json_data, sock);
+                }
+                catch (const json::json::exception &error) {
+                    std::cerr << "error in received data: " << error.what() << std::endl;
+                    json::json unknown_request_data = R"(
+                                                          {"REQUEST_STATE": "UNKNOWN_REQUEST"}
+                                                        )"_json;
+                    sock.write(unknown_request_data.dump().data(),
+                               static_cast<unsigned int>(unknown_request_data.dump().size()));
+                }
+            });
+
+            handle.accept(*socket);
+            std::cout << "socket connected" << std::endl;
+            socket->read();
+        });
+    }
+
+    void run() noexcept
+    {
+        clean_socket();
+        create_socket();
+        run_loop();
+    }
+
   private:
+    void run_loop()
+    {
+        uv_loop_->run();
+    }
+
+    bool clean_socket() noexcept
+    {
+        if (std::filesystem::exists(socket_path_)) {
+            std::cout << "socket: " << socket_path_.string() << " already exist, removing" << std::endl;
+            std::filesystem::remove(socket_path_);
+            return true;
+        }
+        return false;
+    }
+
+    bool create_socket() noexcept
+    {
+        std::string socket = socket_path_.string();
+        std::cout << "binding to socket: " << socket << std::endl;
+        server_->bind(socket);
+        if (this->is_error_occured) return this->is_error_occured;
+        server_->listen();
+        return this->is_error_occured;
+    }
+
     //! Helpers
     template <typename Request>
     Request fill_request(json::json &json_data)
@@ -28,9 +158,13 @@ namespace raven
         return request;
     }
 
-  public:
-    //! Callbacks
     void create_config(json::json &json_data, uvw::PipeHandle &sock)
+    {
+        json::json response_json_data = create_config(json_data);
+        sock.write(response_json_data.dump().data(), static_cast<unsigned int>(response_json_data.dump().size()));
+    }
+
+    json::json create_config(json::json &json_data)
     {
         auto cfg = fill_request<config_create>(json_data);
         std::cout << "cfg.config_name: " << cfg.config_name << std::endl;
@@ -40,7 +174,7 @@ namespace raven
         const config_create_answer answer{"Foo", "Foo"};
         json::json response_json_data;
         to_json(response_json_data, answer);
-        sock.write(response_json_data.dump().data(), static_cast<unsigned int>(response_json_data.dump().size()));
+        return response_json_data;
     }
 
     void load_config(json::json &json_data, uvw::PipeHandle &sock)
@@ -145,114 +279,72 @@ namespace raven
         }
     }
 
-    //! Constructor
-    service()
-    {
-        server_->on<uvw::ErrorEvent>([](auto const &, auto &) { /* TODO: Fill it */ });
-        server_->on<uvw::ListenEvent>([this](uvw::ListenEvent const &, uvw::PipeHandle &handle) {
-            std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
-            socket->on<uvw::CloseEvent>(
-                [](uvw::CloseEvent const &, uvw::PipeHandle &) { std::cout << "socket closed." << std::endl; });
-
-            socket->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock) {
-                std::cout << "end event received" << std::endl;
-                sock.close();
-            });
-
-            socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
-                static const std::unordered_map<std::string, std::function<void(json::json &, uvw::PipeHandle &)>>
-                    order_registry
-                    {
-                        {
-                            "CONFIG_CREATE",       [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->create_config(json_data, sock);
-                        }},
-                        {
-                            "CONFIG_LOAD",         [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->load_config(json_data, sock);
-                        }},
-                        {
-                            "CONFIG_UNLOAD",       [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->unload_config(json_data, sock);
-                        }},
-                        {
-                            "CONFIG_INCLUDE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->include_config(json_data, sock);
-                        }},
-                        {
-                            "SETTING_UPDATE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->update_setting(json_data, sock);
-                        }},
-                        {
-                            "SETTING_REMOVE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->remove_setting(json_data, sock);
-                        }},
-                        {
-                            "SETTING_GET",         [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->get_setting(json_data, sock);
-                        }},
-                        {
-                            "ALIAS_SET",           [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->set_alias(json_data, sock);
-                        },
-                        },
-                        {
-                            "ALIAS_UNSET",         [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->unset_alias(json_data, sock);
-                        },
-                        },
-                        {
-                            "SUBSCRIBE_SETTING",   [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->subscribe_setting(json_data, sock);
-                        },
-                        },
-                        {
-                            "UNSUBSCRIBE_SETTING", [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->unsubscribe_setting(json_data, sock);
-                        },
-                        }
-                    };
-
-                std::string_view data_str(data.data.get(), data.length);
-                try {
-                    auto json_data = json::json::parse(data_str);
-                    std::string command_order = json_data.at(raven::request_keyword).get<std::string>();
-                    order_registry.at(command_order)(json_data, sock);
-                }
-                catch (const json::json::exception &error) {
-                    std::cerr << "error in received data: " << error.what() << std::endl;
-                }
-            });
-
-            handle.accept(*socket);
-            std::cout << "socket connected" << std::endl;
-            socket->read();
-        });
-    }
-
-    void run() noexcept
-    {
-        clean_socket();
-        std::string socket = (std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock").string();
-        std::cout << "binding to socket: " << socket << std::endl;
-        server_->bind(socket);
-        server_->listen();
-        uv_loop_->run();
-    }
-
-    //! In case that the service have been stopped, we want to remove the old socket and create a new one.
-    void clean_socket() noexcept
-    {
-        auto socket_path = std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock";
-        if (std::filesystem::exists(socket_path)) {
-            std::cout << "socket: " << socket_path.string() << " already exist, removing" << std::endl;
-            std::filesystem::remove(socket_path);
-        }
-    }
-
-  private:
     std::shared_ptr<uvw::Loop> uv_loop_{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> server_{uv_loop_->resource<uvw::PipeHandle>()};
-    sqlite::database database_{sqlite::database("albinos_db.sqlite")};
+    std::filesystem::path socket_path_{(std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock")};
+    bool is_error_occured{false};
+
+#ifdef DOCTEST_LIBRARY_INCLUDED
+    TEST_CASE_CLASS ("test create socket")
+    {
+        service service_;
+        if (std::filesystem::exists(service_.socket_path_)) {
+            std::filesystem::remove(service_.socket_path_);
+        }
+        CHECK_FALSE(service_.create_socket());
+        CHECK(service_.create_socket());
+        CHECK(service_.clean_socket());
+    }
+
+    TEST_CASE_CLASS ("test clean socket")
+    {
+        service service_;
+        CHECK_FALSE(service_.clean_socket());
+        CHECK_FALSE(service_.create_socket());
+        CHECK(service_.clean_socket());
+    }
+
+    TEST_CASE_CLASS ("test create_config")
+    {
+        service service_;
+        json::json data = R"(
+                            {
+                                "REQUEST_NAME": "CONFIG_CREATE",
+                                "CONFIG_NAME": "ma_config"
+                            }
+                            )"_json;
+        json::json data_expected = R"(
+                                        {"CONFIG_KEY":"Foo","READONLY_CONFIG_KEY":"Foo","REQUEST_STATE":"SUCCESS"}
+                                     )"_json;
+        CHECK(service_.create_config(data) == data_expected);
+    }
+
+    TEST_CASE_CLASS ("check fake client")
+    {
+        service service_;
+        CHECK_FALSE(service_.create_socket());
+        auto loop = uvw::Loop::getDefault();
+        auto client = loop->resource<uvw::PipeHandle>();
+        client->once<uvw::ConnectEvent>([](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+            CHECK(handle.writable());
+            CHECK(handle.readable());
+
+            auto dataTryWrite = std::unique_ptr<char[]>(new char[1]{'a'});
+            handle.tryWrite(std::move(dataTryWrite), 1);
+            auto dataWrite = std::unique_ptr<char[]>(new char[2]{'b', 'c'});
+            handle.write(std::move(dataWrite), 2);
+        });
+
+        client->once<uvw::WriteEvent>([](const uvw::WriteEvent &, uvw::PipeHandle &handle) {
+            handle.close();
+        });
+
+        client->connect(service_.socket_path_.string());
+
+        CHECK(service_.clean_socket());
+        loop->run();
+    }
+
+#endif
   };
 }

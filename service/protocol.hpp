@@ -9,6 +9,32 @@
 
 namespace raven
 {
+  enum class request_state : unsigned short
+  {
+    success,
+    bad_order,
+    unknown_request,
+    internal_error,
+    unauthorized,
+    unknown_id,
+    unknown_key,
+    unknown_setting,
+    unknown_alias
+  };
+
+  inline const std::unordered_map<request_state, std::string> convert_request_state
+      {
+          {request_state::success,         "SUCCESS"},
+          {request_state::bad_order,       "BAD_ORDER"},
+          {request_state::unknown_request, "UNKNOWN_REQUEST"},
+          {request_state::internal_error,  "INTERNAL_ERROR"},
+          {request_state::unauthorized,    "UNAUTHORIZED"},
+          {request_state::unknown_id,      "UNKNOWN_ID"},
+          {request_state::unknown_key,     "UNKNOWN_KEY"},
+          {request_state::unknown_setting, "UNKNOWN_SETTING"},
+          {request_state::unknown_alias,   "UNKNOWN_ALIAS"},
+      };
+
   namespace json = nlohmann;
 
   //! Keywords
@@ -41,12 +67,14 @@ namespace raven
   {
     std::string config_key;
     std::string readonly_config_key;
+    std::string request_state;
   };
 
   void to_json(raven::json::json &json_data, const config_create_answer &cfg)
   {
-      json_data = {{"CONFIG_KEY",          cfg.config_key},
-                   {"READONLY_CONFIG_KEY", cfg.readonly_config_key}};
+      json_data = {{"CONFIG_KEY", cfg.config_key},
+                   {"READONLY_CONFIG_KEY", cfg.readonly_config_key},
+                   {"REQUEST_STATE", convert_request_state.at(request_state::success)}};
   }
 
   //! CONFIG_LOAD
