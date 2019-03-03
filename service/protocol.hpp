@@ -9,7 +9,7 @@
 
 namespace raven
 {
-  enum class request_state : unsigned short
+  enum class request_state : short
   {
     success,
     bad_order,
@@ -19,7 +19,8 @@ namespace raven
     unknown_id,
     unknown_key,
     unknown_setting,
-    unknown_alias
+    unknown_alias,
+    db_error = -1
   };
 
   inline const std::unordered_map<request_state, std::string> convert_request_state
@@ -33,6 +34,7 @@ namespace raven
           {request_state::unknown_key,     "UNKNOWN_KEY"},
           {request_state::unknown_setting, "UNKNOWN_SETTING"},
           {request_state::unknown_alias,   "UNKNOWN_ALIAS"},
+          {request_state::db_error,        "DB_ERROR"},
       };
 
   namespace json = nlohmann;

@@ -1,6 +1,6 @@
 add_executable(service-test)
 target_sources(service-test PUBLIC service-test.cpp)
-target_include_directories(service-test PRIVATE ../vendor/doctest/doctest ../vendor/json ../service ../vendor/uvw/src ../vendor/uvw/deps/libuv/include ../vendor/strong_type/include/ ../vendor/expected)
-target_link_libraries(service-test ${filesystem_lib} uv_a)
+target_include_directories(service-test PRIVATE ../vendor/doctest/doctest ../vendor/json ../service ../vendor/uvw/src ../vendor/uvw/deps/libuv/include ../vendor/strong_type/include/ ../vendor/expected ../vendor/sql/hdr)
+target_link_libraries(service-test ${filesystem_lib} uv_a ${sqlite3_lib})
 target_compile_options(service-test PUBLIC --coverage -fprofile-arcs -ftest-coverage -fsanitize=undefined)
 target_link_options(service-test PUBLIC --coverage -fsanitize=undefined)

@@ -11,13 +11,14 @@
 #include <filesystem>
 #include <uvw.hpp>
 #include "protocol.hpp"
+#include "db.hpp"
 
 namespace raven
 {
   class service
   {
   public:
-    service() noexcept
+    service(std::filesystem::path db_path = std::filesystem::current_path() / "albinos_service.db") noexcept : db_{db_path}
     {
         server_->on<uvw::ErrorEvent>([this](auto const &error_event, auto &) {
             std::cerr << error_event.what() << std::endl;
@@ -184,11 +185,14 @@ namespace raven
     {
         auto cfg = fill_request<config_create>(json_data);
         std::cout << "cfg.config_name: " << cfg.config_name << std::endl;
-        // TODO: Insert in SQL
-
-        // TODO: Send config key create by SQL (arthur work)
-        const config_create_answer answer{"Foo", "Foo", convert_request_state.at(request_state::success)};
-        prepare_answer(sock, answer);
+        auto id = db_.config_create(json_data);
+        if (id.value() != static_cast<int>(request_state::db_error)) {
+            const config_create_answer answer{std::to_string(id.value()), "", convert_request_state.at(request_state::success)};
+            prepare_answer(sock, answer);
+        } else {
+            const config_create_answer answer{"", "", convert_request_state.at(request_state::db_error)};
+            prepare_answer(sock, answer);
+        }
     }
 
     void load_config(json::json &json_data, uvw::PipeHandle &sock)
@@ -300,31 +304,34 @@ namespace raven
     std::shared_ptr<uvw::Loop> uv_loop_{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> server_{uv_loop_->resource<uvw::PipeHandle>()};
     std::filesystem::path socket_path_{(std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock")};
+    config_db db_;
     bool error_occurred{false};
 
 #ifdef DOCTEST_LIBRARY_INCLUDED
     TEST_CASE_CLASS ("test create socket")
     {
-        service service_;
+        service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
         if (std::filesystem::exists(service_.socket_path_)) {
             std::filesystem::remove(service_.socket_path_);
         }
         CHECK_FALSE(service_.create_socket());
         CHECK(service_.create_socket());
         CHECK(service_.clean_socket());
+        std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test_internal.db");
     }
 
     TEST_CASE_CLASS ("test clean socket")
     {
-        service service_;
+        service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
         CHECK_FALSE(service_.clean_socket());
         CHECK_FALSE(service_.create_socket());
         CHECK(service_.clean_socket());
+        std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test_internal.db");
     }
 
     static void test_client_server_communication(json::json &&request, json::json &&expected_answer) noexcept
     {
-        service service_;
+        service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
         CHECK_FALSE(service_.create_socket());
         auto loop = uvw::Loop::getDefault();
         auto client = loop->resource<uvw::PipeHandle>();
@@ -349,6 +356,7 @@ namespace raven
 
         loop->run();
         CHECK(service_.clean_socket());
+        std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test_internal.db");
     }
 
     TEST_CASE_CLASS ("unknown request")
@@ -361,7 +369,7 @@ namespace raven
     TEST_CASE_CLASS ("create_config request")
     {
         auto data = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-        auto answer = R"({"CONFIG_KEY":"Foo","READONLY_CONFIG_KEY":"Foo","REQUEST_STATE":"SUCCESS"})"_json;
+        auto answer = R"({"CONFIG_KEY":"1","READONLY_CONFIG_KEY":"","REQUEST_STATE":"SUCCESS"})"_json;
         test_client_server_communication(std::move(data), std::move(answer));
     }
 
