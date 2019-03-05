@@ -11,7 +11,9 @@ Each response contain at least **REQUEST_STATE** (see below).
 |*CONFIG_CREATE*|Create a new config.|**CONFIG_NAME**|**CONFIG_KEY**<br>**READONLY_CONFIG_KEY**|
 |*CONFIG_LOAD*| Load an existing config. |**CONFIG_KEY** *or* **READONLY_CONFIG_KEY**| **CONFIG_NAME**<br>**CONFIG_ID**|
 |*CONFIG_UNLOAD*| Unload config. |**CONFIG_ID**|*none*|
-|*CONFIG_INCLUDE*| Include a config in another |**CONFIG_ID**<br>**SRC**<br>**DEST**|*none*|
+|*CONFIG_DELETE*| Delete config. |**CONFIG_ID**|*none*|
+|*CONFIG_GET_DEPS*| Get the ordered list of all included configs. |**CONFIG_ID**|**DEPS** (array of READONLY_CONFIG_KEY)|
+|*CONFIG_INCLUDE*| Include a config in another |**CONFIG_ID**<br>**SRC** (READONLY_CONFIG_KEY of config to include)<br>**INCLUDE_POSITION** (position in the list of inclusion, where 0 is the first to be included)|*none*|
 |*SETTING_UPDATE*| Update or create setting |**CONFIG_ID**<br>**SETTINGS_TO_UPDATE**|*none*|
 |*SETTING_REMOVE*| Remove setting |**CONFIG_ID**<br>**SETTING_NAME**|*none*|
 |*SETTING_GET*| Get setting |**CONFIG_ID**<br>**SETTING_NAME**|**SETTING_VALUE**|
