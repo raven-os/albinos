@@ -1,12 +1,18 @@
-[submodule "vendor/uvw"]
-	path = vendor/uvw
-	url = https://github.com/skypjack/uvw.git
-[submodule "vendor/doctest"]
-	path = vendor/doctest
-	url = https://github.com/onqtam/doctest.git
-[submodule "vendor/strong_type"]
-	path = vendor/strong_type
-	url = https://github.com/doom/strong_type.git
 [submodule "vendor/expected"]
 	path = vendor/expected
 	url = https://github.com/TartanLlama/expected.git
+[submodule "vendor/strong_type"]
+	path = vendor/strong_type
+	url = https://github.com/doom/strong_type.git
+[submodule "vendor/doctest"]
+	path = vendor/doctest
+	url = https://github.com/onqtam/doctest.git
+[submodule "vendor/uvw"]
+	path = vendor/uvw
+	url = https://github.com/skypjack/uvw
+[submodule "vendor/sql"]
+	path = vendor/sql
+	url = https://github.com/SqliteModernCpp/sqlite_modern_cpp.git
+[submodule "vendor/json"]
+	path = vendor/json
+	url = https://github.com/nlohmann/json
