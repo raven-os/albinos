@@ -4,6 +4,7 @@
 
 All requests must contain **REQUEST_NAME**, containing the type of action they want to do.
 Each response contain at least **REQUEST_STATE** (see below).
+All the local settings are applied after the config inclusions.
 
 ### Request types
 | Request Name | Request Description | Additional Argument(s) | Additional Returned Value(s) |
@@ -14,6 +15,7 @@ Each response contain at least **REQUEST_STATE** (see below).
 |*CONFIG_DELETE*| Delete config. |**CONFIG_ID**|*none*|
 |*CONFIG_GET_DEPS*| Get the ordered list of all included configs. |**CONFIG_ID**|**DEPS** (array of READONLY_CONFIG_KEY)|
 |*CONFIG_INCLUDE*| Include a config in another |**CONFIG_ID**<br>**SRC** (READONLY_CONFIG_KEY of config to include)<br>**INCLUDE_POSITION** (position in the list of inclusion, where 0 is the first to be included)|*none*|
+|*CONFIG_UNINCLUDE*| Uninclude a config |**CONFIG_ID**<br>**SRC** (READONLY_CONFIG_KEY of config to uninclude) *or* <br>**INDEX** (position in the list of inclusion)|*none*|
 |*SETTING_UPDATE*| Update or create setting |**CONFIG_ID**<br>**SETTINGS_TO_UPDATE**|*none*|
 |*SETTING_REMOVE*| Remove setting |**CONFIG_ID**<br>**SETTING_NAME**|*none*|
 |*SETTING_GET*| Get setting |**CONFIG_ID**<br>**SETTING_NAME**|**SETTING_VALUE**|
