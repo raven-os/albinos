@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <filesystem>
 #include <uvw.hpp>
+#include <uv.h>
 #include "protocol.hpp"
 #include "db.hpp"
 
@@ -18,13 +19,13 @@ namespace raven
   class service
   {
   public:
-    service(std::filesystem::path db_path = std::filesystem::current_path() / "albinos_service.db") noexcept : db_{db_path}
+    service(std::filesystem::path db_path = std::filesystem::current_path() / "albinos_service.db") noexcept : db_{
+        db_path}
     {
         server_->on<uvw::ErrorEvent>([this](auto const &error_event, auto &) {
             std::cerr << error_event.what() << std::endl;
             this->error_occurred = true;
         });
-
         server_->on<uvw::ListenEvent>([this](uvw::ListenEvent const &, uvw::PipeHandle &handle) {
             std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
             socket->on<uvw::CloseEvent>(
@@ -38,6 +39,7 @@ namespace raven
 
             socket->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock) {
                 std::cout << "end event received" << std::endl;
+                std::cout << "sock close: " << sock.fileno() << std::endl;
                 sock.close();
             });
 
@@ -112,7 +114,7 @@ namespace raven
             });
 
             handle.accept(*socket);
-            std::cout << "socket connected" << std::endl;
+            config_id_registry_[socket->fileno()] = decltype(config_id_registry_)::mapped_type();
             socket->read();
         });
     }
@@ -157,8 +159,8 @@ namespace raven
         sock.write(response_str.data(), static_cast<unsigned int>(response_str.size()));
     }
 
-    template<typename ProtocolType>
-    void prepare_answer(uvw::PipeHandle &sock, const ProtocolType& answer) noexcept
+    template <typename ProtocolType>
+    void prepare_answer(uvw::PipeHandle &sock, const ProtocolType &answer) noexcept
     {
         json::json response_json_data;
         to_json(response_json_data, answer);
@@ -184,13 +186,16 @@ namespace raven
     void create_config(json::json &json_data, uvw::PipeHandle &sock)
     {
         auto cfg = fill_request<config_create>(json_data);
-        std::cout << "cfg.config_name: " << cfg.config_name << std::endl;
-        auto id = db_.config_create(json_data);
-        if (id.value() != static_cast<int>(request_state::db_error)) {
-            const config_create_answer answer{std::to_string(id.value()), "", convert_request_state.at(request_state::success)};
+        auto config_create_db_result = db_.config_create(json_data);
+        if (config_create_db_result.config_id.value() != static_cast<int>(request_state::db_error)) {
+            config_id_registry_[sock.fileno()].push_back(config_create_db_result.config_id);
+            const config_create_answer answer{config_create_db_result.config_key,
+                                              config_create_db_result.readonly_config_key,
+                                              convert_request_state.at(request_state::success)};
             prepare_answer(sock, answer);
         } else {
-            const config_create_answer answer{"", "", convert_request_state.at(request_state::db_error)};
+            const config_create_answer answer{config_key_st{""}, config_key_st{""},
+                                              convert_request_state.at(request_state::db_error)};
             prepare_answer(sock, answer);
         }
     }
@@ -304,6 +309,7 @@ namespace raven
     std::shared_ptr<uvw::Loop> uv_loop_{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> server_{uv_loop_->resource<uvw::PipeHandle>()};
     std::filesystem::path socket_path_{(std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock")};
+    std::unordered_map<uvw::OSFileDescriptor::Type, std::vector<raven::config_id_st>> config_id_registry_;
     config_db db_;
     bool error_occurred{false};
 
@@ -329,7 +335,8 @@ namespace raven
         std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test_internal.db");
     }
 
-    static void test_client_server_communication(json::json &&request, json::json &&expected_answer) noexcept
+    static void test_client_server_communication(json::json &&request, json::json &&expected_answer,
+                                                 bool consider_only_state = false) noexcept
     {
         service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
         CHECK_FALSE(service_.create_socket());
@@ -343,14 +350,19 @@ namespace raven
             handle.read();
         });
 
-        client->once<uvw::DataEvent>([&expected_answer](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
-            std::string_view data_str(data.data.get(), data.length);
-            auto json_data = json::json::parse(data_str);
-            auto json_data_str = json_data.dump();
-            std::cout << "json answer:\n" << json_data_str << std::endl;
-            CHECK(json_data == expected_answer);
-            sock.close();
-        });
+        client->once<uvw::DataEvent>(
+            [&expected_answer, &consider_only_state](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                std::string_view data_str(data.data.get(), data.length);
+                auto json_data = json::json::parse(data_str);
+                auto json_data_str = json_data.dump();
+                std::cout << "json answer:\n" << json_data_str << std::endl;
+                if (!consider_only_state) {
+                    CHECK(json_data == expected_answer);
+                } else {
+                    CHECK(json_data.at("REQUEST_STATE").get<std::string>() == expected_answer.at("REQUEST_STATE").get<std::string>());
+                }
+                sock.close();
+            });
 
         client->connect(service_.socket_path_.string());
 
@@ -369,8 +381,8 @@ namespace raven
     TEST_CASE_CLASS ("create_config request")
     {
         auto data = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-        auto answer = R"({"CONFIG_KEY":"1","READONLY_CONFIG_KEY":"","REQUEST_STATE":"SUCCESS"})"_json;
-        test_client_server_communication(std::move(data), std::move(answer));
+        auto answer = R"({"CONFIG_KEY":"","READONLY_CONFIG_KEY":"","REQUEST_STATE":"SUCCESS"})"_json;
+        test_client_server_communication(std::move(data), std::move(answer), true);
     }
 
     TEST_CASE_CLASS ("load_config request")

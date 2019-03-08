@@ -5,7 +5,8 @@
 #pragma once
 
 #include <string>
-#include "json.hpp"
+#include <json.hpp>
+#include "service_strong_types.hpp"
 
 namespace raven
 {
@@ -68,15 +69,15 @@ namespace raven
   //! CONFIG_CREATE ANSWER
   struct config_create_answer
   {
-    std::string config_key;
-    std::string readonly_config_key;
+    config_key_st config_key;
+    config_key_st readonly_config_key;
     std::string request_state;
   };
 
   void to_json(raven::json::json &json_data, const config_create_answer &cfg)
   {
-      json_data = {{"CONFIG_KEY",          cfg.config_key},
-                   {"READONLY_CONFIG_KEY", cfg.readonly_config_key},
+      json_data = {{"CONFIG_KEY",          cfg.config_key.value()},
+                   {"READONLY_CONFIG_KEY", cfg.readonly_config_key.value()},
                    {"REQUEST_STATE",       cfg.request_state}};
   }
 
