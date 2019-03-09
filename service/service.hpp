@@ -119,6 +119,8 @@ namespace raven
         });
     }
 
+    ~service() noexcept {std::cout << "destroy service" << std::endl;}
+
     void run() noexcept
     {
         clean_socket();
@@ -204,16 +206,13 @@ namespace raven
     {
         auto cfg = fill_request<config_load>(json_data);
         if (cfg.config_key) {
-            std::cout << "cfg.config_key: " << cfg.config_key.value() << std::endl;
+            std::cout << "cfg.config_key: " << cfg.config_key.value().value() << std::endl;
         }
         if (cfg.config_read_only_key) {
-            std::cout << "cfg.config_read_only_key: " << cfg.config_read_only_key.value() << std::endl;
+            std::cout << "cfg.config_read_only_key: " << cfg.config_read_only_key.value().value() << std::endl;
         }
 
-        //! TODO: load from sql
-
-        //! TODO: change after arthur work
-        const config_load_answer answer{"Foo", 42, convert_request_state.at(request_state::success)};
+        auto answer = db_.config_load(cfg);
         prepare_answer(sock, answer);
     }
 
@@ -387,16 +386,51 @@ namespace raven
 
     TEST_CASE_CLASS ("load_config request")
     {
-            SUBCASE("read only key") {
-            auto data = R"({"REQUEST_NAME": "CONFIG_LOAD","READONLY_CONFIG_KEY": "42Key"})"_json;
-            auto answer = R"({"CONFIG_NAME":"Foo","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
-            test_client_server_communication(std::move(data), std::move(answer));
+        SUBCASE("read only key with known key") {
+            /*using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_testl_internal.db"};
+            auto answer_create = service_.db_.config_create(R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_to_load"})"_json);
+            auto request = R"({"REQUEST_NAME": "CONFIG_LOAD","READONLY_CONFIG_KEY": "42Key"})"_json;
+            request["READONLY_CONFIG_KEY"] = answer_create.readonly_config_key.value();
+            auto expected_answer = R"({"CONFIG_NAME":"ma_config_to_load","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
+            expected_answer["CONFIG_ID"] = answer_create.config_id.value();
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+            client->once<uvw::ConnectEvent>([&request](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+                CHECK(handle.writable());
+                CHECK(handle.readable());
+                auto request_str = request.dump();
+                handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                handle.read();
+            });
+
+            client->once<uvw::DataEvent>(
+                [&expected_answer](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                    std::string_view data_str(data.data.get(), data.length);
+                    auto json_data = json::json::parse(data_str);
+                    auto json_data_str = json_data.dump();
+                    std::cout << "json answer:\n" << json_data_str << std::endl;
+                    CHECK(json_data == expected_answer);
+                    sock.close();
+                });
+
+            client->connect(service_.socket_path_.string());
+            loop->run();
+            CHECK(service_.clean_socket());
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_testl_internal.db");*/
         }
 
-            SUBCASE("non read only key") {
+        SUBCASE("read only key unknown") {
+            auto data = R"({"REQUEST_NAME": "CONFIG_LOAD","READONLY_CONFIG_KEY": "422Key"})"_json;
+            auto answer = R"({"CONFIG_NAME":"Foo","CONFIG_ID":42,"REQUEST_STATE":"UNKNOWN_KEY"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer), true);
+        }
+
+        SUBCASE("non read only key unknown key") {
             auto data = R"({"REQUEST_NAME": "CONFIG_LOAD","CONFIG_KEY": "42Key"})"_json;
-            auto answer = R"({"CONFIG_NAME":"Foo","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
-            test_client_server_communication(std::move(data), std::move(answer));
+            auto answer = R"({"CONFIG_NAME":"Foo","CONFIG_ID":42,"REQUEST_STATE":"UNKNOWN_KEY"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer), true);
         }
     }
 

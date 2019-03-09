@@ -84,17 +84,17 @@ namespace raven
   //! CONFIG_LOAD
   struct config_load
   {
-    std::optional<std::string> config_key{std::nullopt};
-    std::optional<std::string> config_read_only_key{std::nullopt};
+    std::optional<config_key_st> config_key{std::nullopt};
+    std::optional<config_key_st> config_read_only_key{std::nullopt};
   };
 
   inline void from_json(const raven::json::json &json_data, config_load &cfg)
   {
       //! We are checking if the config key keyword is present, otherwise it's probably a read only value
       if (json_data.count(config_key_keyword) > 0) {
-          cfg.config_key = json_data.at(config_key_keyword).get<std::string>();
+          cfg.config_key = config_key_st{json_data.at(config_key_keyword).get<std::string>()};
       } else if (json_data.count(config_read_only_key_keyword) > 0) {
-          cfg.config_read_only_key = json_data.at(config_read_only_key_keyword).get<std::string>();
+          cfg.config_read_only_key = config_key_st{json_data.at(config_read_only_key_keyword).get<std::string>()};
       }
   }
 
@@ -102,14 +102,14 @@ namespace raven
   struct config_load_answer
   {
     std::string config_name;
-    std::uint32_t config_id;
+    config_id_st config_id;
     std::string request_state;
   };
 
   void to_json(raven::json::json &json_data, const config_load_answer &cfg)
   {
       json_data = {{"CONFIG_NAME",   cfg.config_name},
-                   {"CONFIG_ID",     cfg.config_id},
+                   {"CONFIG_ID",     cfg.config_id.value()},
                    {"REQUEST_STATE", cfg.request_state}};
   }
 
