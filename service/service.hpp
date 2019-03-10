@@ -44,59 +44,6 @@ namespace raven
             });
 
             socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
-                static const std::unordered_map<std::string, std::function<void(json::json &, uvw::PipeHandle &)>>
-                    order_registry
-                    {
-                        {
-                            "CONFIG_CREATE",       [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->create_config(json_data, sock);
-                        }},
-                        {
-                            "CONFIG_LOAD",         [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->load_config(json_data, sock);
-                        }},
-                        {
-                            "CONFIG_UNLOAD",       [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->unload_config(json_data, sock);
-                        }},
-                        {
-                            "CONFIG_INCLUDE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->include_config(json_data, sock);
-                        }},
-                        {
-                            "SETTING_UPDATE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->update_setting(json_data, sock);
-                        }},
-                        {
-                            "SETTING_REMOVE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->remove_setting(json_data, sock);
-                        }},
-                        {
-                            "SETTING_GET",         [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->get_setting(json_data, sock);
-                        }},
-                        {
-                            "ALIAS_SET",           [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->set_alias(json_data, sock);
-                        },
-                        },
-                        {
-                            "ALIAS_UNSET",         [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->unset_alias(json_data, sock);
-                        },
-                        },
-                        {
-                            "SUBSCRIBE_SETTING",   [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->subscribe_setting(json_data, sock);
-                        },
-                        },
-                        {
-                            "UNSUBSCRIBE_SETTING", [this](json::json &json_data, uvw::PipeHandle &sock) {
-                            this->unsubscribe_setting(json_data, sock);
-                        },
-                        }
-                    };
-
                 std::string_view data_str(data.data.get(), data.length);
                 try {
                     auto json_data = json::json::parse(data_str);
@@ -117,6 +64,11 @@ namespace raven
             config_id_registry_[socket->fileno()] = decltype(config_id_registry_)::mapped_type();
             socket->read();
         });
+    }
+
+    ~service() noexcept
+    {
+        std::cout << "destroy service" << std::endl;
     }
 
     void run() noexcept
@@ -204,16 +156,13 @@ namespace raven
     {
         auto cfg = fill_request<config_load>(json_data);
         if (cfg.config_key) {
-            std::cout << "cfg.config_key: " << cfg.config_key.value() << std::endl;
+            std::cout << "cfg.config_key: " << cfg.config_key.value().value() << std::endl;
         }
         if (cfg.config_read_only_key) {
-            std::cout << "cfg.config_read_only_key: " << cfg.config_read_only_key.value() << std::endl;
+            std::cout << "cfg.config_read_only_key: " << cfg.config_read_only_key.value().value() << std::endl;
         }
 
-        //! TODO: load from sql
-
-        //! TODO: change after arthur work
-        const config_load_answer answer{"Foo", 42, convert_request_state.at(request_state::success)};
+        auto answer = db_.config_load(cfg);
         prepare_answer(sock, answer);
     }
 
@@ -312,6 +261,58 @@ namespace raven
     std::unordered_map<uvw::OSFileDescriptor::Type, std::vector<raven::config_id_st>> config_id_registry_;
     config_db db_;
     bool error_occurred{false};
+    const std::unordered_map<std::string, std::function<void(json::json &, uvw::PipeHandle &)>>
+        order_registry
+        {
+            {
+                "CONFIG_CREATE",       [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->create_config(json_data, sock);
+            }},
+            {
+                "CONFIG_LOAD",         [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->load_config(json_data, sock);
+            }},
+            {
+                "CONFIG_UNLOAD",       [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->unload_config(json_data, sock);
+            }},
+            {
+                "CONFIG_INCLUDE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->include_config(json_data, sock);
+            }},
+            {
+                "SETTING_UPDATE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->update_setting(json_data, sock);
+            }},
+            {
+                "SETTING_REMOVE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->remove_setting(json_data, sock);
+            }},
+            {
+                "SETTING_GET",         [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->get_setting(json_data, sock);
+            }},
+            {
+                "ALIAS_SET",           [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->set_alias(json_data, sock);
+            },
+            },
+            {
+                "ALIAS_UNSET",         [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->unset_alias(json_data, sock);
+            },
+            },
+            {
+                "SUBSCRIBE_SETTING",   [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->subscribe_setting(json_data, sock);
+            },
+            },
+            {
+                "UNSUBSCRIBE_SETTING", [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->unsubscribe_setting(json_data, sock);
+            },
+            }
+        };
 
 #ifdef DOCTEST_LIBRARY_INCLUDED
     TEST_CASE_CLASS ("test create socket")
@@ -335,13 +336,10 @@ namespace raven
         std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test_internal.db");
     }
 
-    static void test_client_server_communication(json::json &&request, json::json &&expected_answer,
-                                                 bool consider_only_state = false) noexcept
+    static void
+    test_setup_client(const nlohmann::json &request, const nlohmann::json &expected_answer, bool consider_only_state,
+                      const service &service_, std::shared_ptr<uvw::PipeHandle> &client) noexcept
     {
-        service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-        CHECK_FALSE(service_.create_socket());
-        auto loop = uvw::Loop::getDefault();
-        auto client = loop->resource<uvw::PipeHandle>();
         client->once<uvw::ConnectEvent>([&request](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
             CHECK(handle.writable());
             CHECK(handle.readable());
@@ -359,16 +357,31 @@ namespace raven
                 if (!consider_only_state) {
                     CHECK(json_data == expected_answer);
                 } else {
-                    CHECK(json_data.at("REQUEST_STATE").get<std::string>() == expected_answer.at("REQUEST_STATE").get<std::string>());
+                    CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                        expected_answer.at("REQUEST_STATE").get<std::string>());
                 }
                 sock.close();
             });
 
         client->connect(service_.socket_path_.string());
+    }
 
+    static void test_run_and_clean_client(service &service_, std::shared_ptr<uvw::Loop> &loop) noexcept
+    {
         loop->run();
-        CHECK(service_.clean_socket());
+        service_.clean_socket();
         std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test_internal.db");
+    }
+
+    static void test_client_server_communication(json::json &&request, json::json &&expected_answer,
+                                                 bool consider_only_state = false) noexcept
+    {
+        service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+        CHECK_FALSE(service_.create_socket());
+        auto loop = uvw::Loop::getDefault();
+        auto client = loop->resource<uvw::PipeHandle>();
+        test_setup_client(request, expected_answer, consider_only_state, service_, client);
+        test_run_and_clean_client(service_, loop);
     }
 
     TEST_CASE_CLASS ("unknown request")
@@ -387,17 +400,63 @@ namespace raven
 
     TEST_CASE_CLASS ("load_config request")
     {
-            SUBCASE("read only key") {
-            auto data = R"({"REQUEST_NAME": "CONFIG_LOAD","READONLY_CONFIG_KEY": "42Key"})"_json;
-            auto answer = R"({"CONFIG_NAME":"Foo","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
-            test_client_server_communication(std::move(data), std::move(answer));
+        SUBCASE("read only key unknown in empty config table") {
+            auto data = R"({"REQUEST_NAME": "CONFIG_LOAD","READONLY_CONFIG_KEY": "422Key"})"_json;
+            auto answer = R"({"CONFIG_NAME":"Foo","CONFIG_ID":42,"REQUEST_STATE":"DB_ERROR"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer), true);
         }
 
-            SUBCASE("non read only key") {
+        SUBCASE("non read only key unknown key") {
             auto data = R"({"REQUEST_NAME": "CONFIG_LOAD","CONFIG_KEY": "42Key"})"_json;
-            auto answer = R"({"CONFIG_NAME":"Foo","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
-            test_client_server_communication(std::move(data), std::move(answer));
+            auto answer = R"({"CONFIG_NAME":"Foo","CONFIG_ID":42,"REQUEST_STATE":"DB_ERROR"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer), true);
         }
+
+        SUBCASE ("read only key unknown") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_to_load_lol"})"_json);
+            auto request = R"({"REQUEST_NAME": "CONFIG_LOAD","READONLY_CONFIG_KEY": "unknown_readonly_config_key"})"_json;
+            auto expected_answer = R"({"CONFIG_NAME":"","CONFIG_ID":0,"REQUEST_STATE":"UNKNOWN_KEY"})"_json;
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+            test_setup_client(request, expected_answer, false, service_, client);
+            test_run_and_clean_client(service_, loop);
+        };
+
+        SUBCASE ("load_config request with known readonly_config_key") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_to_load"})"_json);
+            auto request = R"({"REQUEST_NAME": "CONFIG_LOAD","READONLY_CONFIG_KEY": "42Key"})"_json;
+            request["READONLY_CONFIG_KEY"] = answer_create.readonly_config_key.value();
+            auto expected_answer = R"({"CONFIG_NAME":"ma_config_to_load","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
+            expected_answer["CONFIG_ID"] = answer_create.config_id.value();
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+            test_setup_client(request, expected_answer, false, service_, client);
+            test_run_and_clean_client(service_, loop);
+        };
+
+        SUBCASE ("load_config request with known config_key") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_to_load_regular"})"_json);
+            auto request = R"({"REQUEST_NAME": "CONFIG_LOAD","CONFIG_KEY": "42Key"})"_json;
+            request["CONFIG_KEY"] = answer_create.config_key.value();
+            auto expected_answer = R"({"CONFIG_NAME":"ma_config_to_load_regular","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
+            expected_answer["CONFIG_ID"] = answer_create.config_id.value();
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+            test_setup_client(request, expected_answer, false, service_, client);
+            test_run_and_clean_client(service_, loop);
+        };
     }
 
     TEST_CASE_CLASS ("unload_config request")
@@ -451,13 +510,13 @@ namespace raven
 
     TEST_CASE_CLASS ("setting_subscribe request")
     {
-            SUBCASE("without alias") {
+        SUBCASE("without alias") {
             auto data = R"({"REQUEST_NAME": "SUBSCRIBE_SETTING","CONFIG_ID": 43,"SETTING_NAME": "foobar"})"_json;
             auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
             test_client_server_communication(std::move(data), std::move(answer));
         }
 
-            SUBCASE("with alias") {
+        SUBCASE("with alias") {
             auto data = R"({"REQUEST_NAME": "SUBSCRIBE_SETTING","CONFIG_ID": 43,"ALIAS_NAME": "barfoo"})"_json;
             auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
             test_client_server_communication(std::move(data), std::move(answer));
@@ -466,13 +525,13 @@ namespace raven
 
     TEST_CASE_CLASS ("setting_unsubscribe request")
     {
-            SUBCASE("without alias") {
+        SUBCASE("without alias") {
             auto data = R"({"REQUEST_NAME": "UNSUBSCRIBE_SETTING","CONFIG_ID": 43,"SETTING_NAME": "foobar"})"_json;
             auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
             test_client_server_communication(std::move(data), std::move(answer));
         }
 
-            SUBCASE("with alias") {
+        SUBCASE("with alias") {
             auto data = R"({"REQUEST_NAME": "UNSUBSCRIBE_SETTING","CONFIG_ID": 43,"ALIAS_NAME": "barfoo"})"_json;
             auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
             test_client_server_communication(std::move(data), std::move(answer));
