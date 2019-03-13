@@ -119,10 +119,10 @@ namespace raven
         send_answer(response_json_data, sock);
     }
 
-    void prepare_answer(uvw::PipeHandle &sock) noexcept
+    void prepare_answer(uvw::PipeHandle &sock, request_state state = request_state::success) noexcept
     {
         json::json response_json_data;
-        response_json_data[request_state_keyword] = convert_request_state.at(request_state::success);
+        response_json_data[request_state_keyword] = convert_request_state.at(state);
         send_answer(response_json_data, sock);
     }
 
@@ -185,10 +185,10 @@ namespace raven
     void update_setting(json::json &json_data, uvw::PipeHandle &sock)
     {
         auto cfg = fill_request<setting_update>(json_data);
-        std::cout << "cfg.id: " << cfg.id << std::endl;
-        std::cout << "cfg.setting_name: " << cfg.setting_name << std::endl;
-        std::cout << "cfg.setting_value: " << cfg.setting_value << std::endl;
-        prepare_answer(sock);
+        std::cout << "cfg.id: " << cfg.id.value() << std::endl;
+        std::cout << "settings_to_update: " << cfg.settings_to_update.dump() << std::endl;
+        auto state = db_.settings_update(cfg);
+        prepare_answer(sock, state);
     }
 
     void remove_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -475,9 +475,26 @@ namespace raven
 
     TEST_CASE_CLASS ("update_setting request")
     {
-        auto data = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTING_NAME": "foo","SETTING_VALUE": "bar"})"_json;
-        auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
-        test_client_server_communication(std::move(data), std::move(answer));
+        SUBCASE("update_setting with unknown id") {
+            auto data = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTINGS_TO_UPDATE": {"foo": "bar","titi": 1}})"_json;
+            auto answer = R"({"REQUEST_STATE":"UNKNOWN_ID"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer), true);
+        }
+
+        SUBCASE ("update_setting with valid id") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
+            auto request = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTINGS_TO_UPDATE": {"foo": "bar","titi": 1}})"_json;
+            request["CONFIG_ID"] = answer_create.config_id.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+            test_setup_client(request, expected_answer, true, service_, client);
+            test_run_and_clean_client(service_, loop);
+        };
     }
 
     TEST_CASE_CLASS ("remove_setting request")

@@ -52,7 +52,8 @@ namespace raven
   inline constexpr const char config_include_src[] = "SRC";
   inline constexpr const char config_include_dst[] = "DST";
   inline constexpr const char setting_name[] = "SETTING_NAME";
-  inline constexpr const char setting_value[] = "SETTING_VALUE";
+  inline constexpr const char settings_to_update_keyword[] = "SETTINGS_TO_UPDATE";
+  //inline constexpr const char setting_value[] = "SETTING_VALUE";
   inline constexpr const char alias_name[] = "ALIAS_NAME";
 
   //! CONFIG_CREATE
@@ -142,16 +143,14 @@ namespace raven
   //! SETTING_UPDATE
   struct setting_update
   {
-    std::uint32_t id;
-    std::string setting_name;
-    std::string setting_value;
+    config_id_st id;
+    json::json settings_to_update{json::json::object()};
   };
 
   inline void from_json(const raven::json::json &json_data, setting_update &cfg)
   {
-      cfg.id = json_data.at(config_id).get<std::uint32_t>();
-      cfg.setting_name = json_data.at(setting_name).get<std::string>();
-      cfg.setting_value = json_data.at(setting_value).get<std::string>();
+      cfg.id = config_id_st{json_data.at(config_id).get<int>()};
+      cfg.settings_to_update = json_data.at(settings_to_update_keyword);
   }
 
   //! SETTING_REMOVE

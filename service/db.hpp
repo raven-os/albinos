@@ -39,6 +39,10 @@ namespace raven
       R"(select count(*) FROM config where config_key = ?;)"};
   inline constexpr const db_statement_st select_count_readonly_key_statement{
       R"(select count(*) FROM config where readonly_config_key = ?;)"};
+  inline constexpr const db_statement_st select_count_config_from_id_statement{
+      R"(select count(*) FROM config where id = ?;)"};
+  inline constexpr const db_statement_st select_config_from_id_statement{
+      R"(select config_text from config where id = ?;)"};
 
   struct config_create_answer_db
   {
@@ -73,7 +77,8 @@ namespace raven
             try {
                 json::json data_to_bind;
                 data_to_bind[config_name_keyword] = config_create_data[config_name_keyword];
-                data_to_bind["SETTINGS"] = {};
+                data_to_bind["SETTINGS"] = json::json::object();
+                data_to_bind["OTHER_CONFIG"] = json::json::array();
                 std::cout << data_to_bind.dump() << std::endl;
                 auto data_to_bind_str = data_to_bind.dump();
                 database_ << insert_config_create_statement.value()
@@ -142,6 +147,32 @@ namespace raven
         return db_answer;
     }
 
+    request_state settings_update(const setting_update &setting_update_data)
+    {
+        try {
+            auto functor_receive_data = [&setting_update_data](const std::string json_text) {
+                auto json_data = json::json::parse(json_text);
+                for (auto&[key, value] : setting_update_data.settings_to_update.items()) {
+                    json_data["SETTINGS"][key] = value;
+                }
+                std::cout << json_data.dump() << std::endl;
+            };
+            throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement,
+                                                                 setting_update_data.id.value());
+            database_ << select_config_from_id_statement.value() << setting_update_data.id.value()
+                      >> functor_receive_data;
+        }
+        catch (const sqlite::errors::misuse &error) {
+            std::cerr << error.what() << std::endl;
+            return request_state::unknown_id;
+        }
+        catch (const std::exception &error) {
+            std::cerr << error.what() << std::endl;
+            return request_state::db_error;
+        }
+        return request_state::success;
+    }
+
   private:
     template <typename Value>
     void throw_misuse_if_count_return_zero_for_this_statement(const db_statement_st &statement, Value value_statement)
@@ -200,6 +231,38 @@ namespace raven
             std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
         }
     }
+
+    TEST_CASE_CLASS ("setting update db")
+    {
+        SUBCASE("setting update unknown id") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            setting_update setting_update_data{config_id_st{42}, {{"foo", "bar"}}};
+            CHECK_EQ(static_cast<short>(db.settings_update(setting_update_data)),
+                static_cast<short>(request_state::unknown_id));
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+
+        SUBCASE("normal update setting") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
+            auto config_create_answer = db.config_create(config_create);
+            setting_update setting_update_data{config_create_answer.config_id, {{"foo", "bar"}}};
+            CHECK_EQ(static_cast<short>(db.settings_update(setting_update_data)),
+                static_cast<short>(request_state::success));
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+
+        SUBCASE("normal update multiple settings") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
+            auto config_create_answer = db.config_create(config_create);
+            setting_update setting_update_data{config_create_answer.config_id, {{"foo", "bar"}, {"titi", 1}}};
+            CHECK_EQ(static_cast<short>(db.settings_update(setting_update_data)),
+                static_cast<short>(request_state::success));
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+    }
+
 #endif
 
   private:
