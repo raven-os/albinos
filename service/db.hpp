@@ -7,20 +7,14 @@
 #include <string>
 #include <sqlite_modern_cpp.h>
 #include <random>
+#include <loguru.hpp>
 #include "service_strong_types.hpp"
 #include "utils.hpp"
 
 namespace raven
 {
-  inline constexpr const db_statement_st create_table_statement{R"(create table if not exists config
-                      ( config_text text,
-                        id          integer not null
-                        constraint  config_pk
-                        primary key autoincrement,
-                        config_key  text,
-	                readonly_config_key text
-                      );
-                    )"};
+  inline constexpr const db_statement_st create_table_statement{
+      R"(create table if not exists config(config_text text,id integer not null constraint config_pk primary key autoincrement, config_key  text, readonly_config_key text);)"};
   inline constexpr const db_statement_st create_unique_index_config_id_statement{
       R"(create unique index if not exists config_id_uindex on config (id);)"};
   inline constexpr const db_statement_st create_unique_index_config_key_statement{
@@ -43,6 +37,7 @@ namespace raven
       R"(select count(*) FROM config where id = ?;)"};
   inline constexpr const db_statement_st select_config_from_id_statement{
       R"(select config_text from config where id = ?;)"};
+  inline constexpr const db_statement_st select_count_config_element_statement{R"(select count(*) from config;)"};
 
   struct config_create_answer_db
   {
@@ -54,21 +49,30 @@ namespace raven
   class config_db
   {
   public:
+    template <typename ... Args>
+    inline auto execute_statement(const db_statement_st &statement, Args &&...args)
+    {
+        DLOG_F(INFO, "%s", statement.value());
+        return (database_ << statement.value() << ... << args);
+    }
+
     config_db(std::filesystem::path path_to_db) noexcept : database_{path_to_db.string()}
     {
+        LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         try {
-            database_ << create_table_statement.value();
-            database_ << create_unique_index_config_id_statement.value();
-            database_ << create_unique_index_config_key_statement.value();
-            database_ << create_unique_index_readonly_config_key_statement.value();
+            execute_statement(create_table_statement);
+            execute_statement(create_unique_index_config_id_statement);
+            execute_statement(create_unique_index_config_key_statement);
+            execute_statement(create_unique_index_readonly_config_key_statement);
         }
         catch (const std::exception &error) {
-            std::cerr << "error db occured: " << error.what() << std::endl;
+            DLOG_F(ERROR, "error db occured: %s", error.what());
         }
     }
 
     config_create_answer_db config_create(const json::json &config_create_data) noexcept
     {
+        LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         using namespace std::string_literals;
         config_key_st config_key;
         config_key_st readonly_config_key;
@@ -79,31 +83,34 @@ namespace raven
                 data_to_bind[config_name_keyword] = config_create_data[config_name_keyword];
                 data_to_bind["SETTINGS"] = json::json::object();
                 data_to_bind["OTHER_CONFIG"] = json::json::array();
-                std::cout << data_to_bind.dump() << std::endl;
+                DLOG_F(INFO, "json to insert in db: %s", data_to_bind.dump().c_str());
                 auto data_to_bind_str = data_to_bind.dump();
-                database_ << insert_config_create_statement.value()
-                          << data_to_bind_str
-                          << (random_string() +
-                              std::to_string(std::hash<std::string>()(config_create_data[config_name_keyword])))
-                          << (random_string() +
-                              std::to_string(std::hash<std::string>()(config_create_data[config_name_keyword])));
+                execute_statement(insert_config_create_statement,
+                                  data_to_bind_str, (random_string() +
+                                                     std::to_string(std::hash<std::string>()(
+                                                         config_create_data[config_name_keyword]))),
+                                  (random_string() + std::to_string(std::hash<std::string>()
+                                                                        (config_create_data[config_name_keyword]))));
 
-                database_ << select_keys_config_create_statement.value()
-                          << database_.last_insert_rowid()
-                          >> [&](std::string config_key_, std::string readonly_config_key_) {
-                              config_key = config_key_st{config_key_};
-                              readonly_config_key = config_key_st{readonly_config_key_};
-                          };
+                execute_statement(select_keys_config_create_statement, database_.last_insert_rowid())
+                    >> [&](std::string config_key_, std::string readonly_config_key_) {
+                        config_key = config_key_st{config_key_};
+                        readonly_config_key = config_key_st{readonly_config_key_};
+                    };
                 //success;
                 request_state_value = config_id_st{static_cast<int>(database_.last_insert_rowid())};
                 break;
             }
             catch (const sqlite::errors::constraint_unique &error) {
-                std::cerr << error.what() << std::endl;
+                DLOG_F(ERROR, "%s, from sql -> %s", error.what(), error.get_sql().c_str());
                 /* error constraint violated, we retry with a new random_string() */
             }
+            catch (const sqlite::sqlite_exception &error) {
+                DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
+                /* this is another error from database, we retry with a new random_string() */
+            }
             catch (const std::exception &error) {
-                std::cerr << "error: " << error.what() << std::endl;
+                DLOG_F(ERROR, "error: %s", error.what());
                 /* this error seem's fatal, we break */
                 break;
             }
@@ -113,6 +120,7 @@ namespace raven
 
     config_load_answer config_load(const config_load &config_load_data) noexcept
     {
+        LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         config_load_answer db_answer{"", config_id_st{}, convert_request_state.at(request_state::success)};
         try {
             auto functor_receive_data = [&db_answer](const std::string json_text, int id) {
@@ -121,27 +129,31 @@ namespace raven
                 db_answer.config_name = json_data.at(config_name_keyword).get<std::string>();
             };
             int nb_count = 0;
-            database_ << "SELECT count(*) FROM config;" >> nb_count;
+            execute_statement(select_count_config_element_statement) >> nb_count;
             if (!nb_count)
-                throw sqlite::errors::empty(0, "SELECT count(*) FROM config;");
+                throw sqlite::errors::empty(0, select_count_config_element_statement.value());
             if (config_load_data.config_key) {
                 throw_misuse_if_count_return_zero_for_this_statement(select_count_key_statement,
                                                                      config_load_data.config_key.value().value());
-                database_ << select_config_from_key_statement.value() << config_load_data.config_key.value().value()
-                          >> functor_receive_data;
+                execute_statement(select_config_from_key_statement,
+                                  config_load_data.config_key.value().value()) >> functor_receive_data;
             } else if (config_load_data.config_read_only_key) {
                 throw_misuse_if_count_return_zero_for_this_statement(select_count_readonly_key_statement,
                                                                      config_load_data.config_read_only_key.value().value());
-                database_ << select_config_from_readonly_key_statement.value()
-                          << config_load_data.config_read_only_key.value().value() >> functor_receive_data;
+                execute_statement(select_config_from_readonly_key_statement,
+                                  config_load_data.config_read_only_key.value().value()) >> functor_receive_data;
             }
         }
         catch (const sqlite::errors::misuse &error) {
-            std::cerr << "misuse of api or wrong key:" << error.what() << std::endl;
+            DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
             db_answer.request_state = convert_request_state.at(request_state::unknown_key);
         }
+        catch (const sqlite::sqlite_exception &error) {
+            DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
+            db_answer.request_state = convert_request_state.at(request_state::db_error);
+        }
         catch (const std::exception &error) {
-            std::cerr << error.what() << std::endl;
+            DLOG_F(ERROR, "%s", error.what());
             db_answer.request_state = convert_request_state.at(request_state::db_error);
         }
         return db_answer;
@@ -149,25 +161,29 @@ namespace raven
 
     request_state settings_update(const setting_update &setting_update_data)
     {
+        LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         try {
             auto functor_receive_data = [&setting_update_data](const std::string json_text) {
                 auto json_data = json::json::parse(json_text);
                 for (auto&[key, value] : setting_update_data.settings_to_update.items()) {
                     json_data["SETTINGS"][key] = value;
                 }
-                std::cout << json_data.dump() << std::endl;
+                DLOG_F(INFO, "json after update: %s", json_data.dump().c_str());
             };
             throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement,
                                                                  setting_update_data.id.value());
-            database_ << select_config_from_id_statement.value() << setting_update_data.id.value()
-                      >> functor_receive_data;
+            execute_statement(select_config_from_id_statement, setting_update_data.id.value()) >> functor_receive_data;
         }
         catch (const sqlite::errors::misuse &error) {
-            std::cerr << error.what() << std::endl;
+            DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
             return request_state::unknown_id;
         }
+        catch (const sqlite::sqlite_exception &error) {
+            DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
+            return request_state::db_error;
+        }
         catch (const std::exception &error) {
-            std::cerr << error.what() << std::endl;
+            DLOG_F(ERROR, "%s", error.what());
             return request_state::db_error;
         }
         return request_state::success;
@@ -178,7 +194,7 @@ namespace raven
     void throw_misuse_if_count_return_zero_for_this_statement(const db_statement_st &statement, Value value_statement)
     {
         int nb_count = 0;
-        database_ << statement.value() << value_statement >> nb_count;
+        execute_statement(statement, value_statement) >> nb_count;
         if (!nb_count)
             throw sqlite::errors::misuse(0, statement.value());
     }

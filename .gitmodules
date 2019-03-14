@@ -16,3 +16,6 @@
 [submodule "vendor/json"]
 	path = vendor/json
 	url = https://github.com/nlohmann/json
+[submodule "vendor/loguru"]
+	path = vendor/loguru
+	url = https://github.com/emilk/loguru.git
