@@ -11,6 +11,7 @@
 #include <uvw.hpp>
 #include <uv.h>
 #include <loguru.hpp>
+#include "client.hpp"
 #include "protocol.hpp"
 #include "db.hpp"
 
@@ -24,7 +25,7 @@ namespace raven
     {
         VLOG_SCOPE_F(loguru::Verbosity_INFO, "service constructor");
         DVLOG_F(loguru::Verbosity_INFO, "register error_event libuv listener: %s",
-            "<uvw::ErrorEvent>([this](auto const &error_event, auto &)");
+                "<uvw::ErrorEvent>([this](auto const &error_event, auto &)");
         server_->on<uvw::ErrorEvent>([this](auto const &error_event, auto &) {
             LOG_SCOPE_F(ERROR, __PRETTY_FUNCTION__);
             DVLOG_F(loguru::Verbosity_ERROR, "%s", error_event.what());
@@ -38,19 +39,23 @@ namespace raven
             DVLOG_F(loguru::Verbosity_INFO, "register close_event libuv listener: %s",
                     "<uvw::CloseEvent>([this](uvw::CloseEvent const &, uvw::PipeHandle &handle)");
             socket->on<uvw::CloseEvent>([this](uvw::CloseEvent const &, uvw::PipeHandle &handle) {
-                    LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
-                    DVLOG_F(loguru::Verbosity_INFO, "socket closed.");
-                    handle.close();
+                LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
+                DVLOG_F(loguru::Verbosity_INFO, "socket closed.");
+                handle.close();
 #ifdef DOCTEST_LIBRARY_INCLUDED
-                    this->uv_loop_->stop();
+                this->uv_loop_->stop();
 #endif
-                });
+            });
 
             DVLOG_F(loguru::Verbosity_INFO, "register end_event libuv listener: %s",
                     "<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock)");
-            socket->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock) {
+            socket->on<uvw::EndEvent>([this](const uvw::EndEvent &, uvw::PipeHandle &sock) {
                 LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
                 DVLOG_F(loguru::Verbosity_INFO, "closing socket: %d", static_cast<int>(sock.fileno()));
+                //! Since the client will disconnect, we unload every config related to him
+                DVLOG_F(loguru::Verbosity_INFO, "unload every config for the client -> %d",
+                        static_cast<int>(sock.fileno()));
+                this->config_clients_registry_.erase(sock.fileno());
                 sock.close();
             });
 
@@ -75,7 +80,7 @@ namespace raven
             });
 
             handle.accept(*socket);
-            config_id_registry_[socket->fileno()] = decltype(config_id_registry_)::mapped_type();
+            config_clients_registry_.emplace(std::make_pair(socket->fileno(), raven::client(socket)));
             socket->read();
         });
     }
@@ -160,7 +165,7 @@ namespace raven
         auto cfg = fill_request<config_create>(json_data);
         auto config_create_db_result = db_.config_create(json_data);
         if (config_create_db_result.config_id.value() != static_cast<int>(request_state::db_error)) {
-            config_id_registry_[sock.fileno()].push_back(config_create_db_result.config_id);
+            config_clients_registry_.at(sock.fileno()) += config_create_db_result.config_id;
             const config_create_answer answer{config_create_db_result.config_key,
                                               config_create_db_result.readonly_config_key,
                                               convert_request_state.at(request_state::success)};
@@ -178,7 +183,7 @@ namespace raven
         auto cfg = fill_request<config_load>(json_data);
         DLOG_IF_F(INFO, cfg.config_key.has_value(), "cfg.config_key: %s", cfg.config_key.value().value().c_str());
         DLOG_IF_F(INFO, cfg.config_read_only_key.has_value(), "cfg.config_read_only_key: %s",
-            cfg.config_read_only_key.value().value().c_str());
+                  cfg.config_read_only_key.value().value().c_str());
         auto answer = db_.config_load(cfg);
         prepare_answer(sock, answer);
     }
@@ -187,7 +192,8 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<config_unload>(json_data);
-        DLOG_F(INFO, "cfg.id: %d", cfg.id);
+        auto &config_ids = config_clients_registry_.at(sock.fileno());
+        config_ids -= cfg.id;
         prepare_answer(sock);
     }
 
@@ -275,7 +281,7 @@ namespace raven
     std::shared_ptr<uvw::Loop> uv_loop_{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> server_{uv_loop_->resource<uvw::PipeHandle>()};
     std::filesystem::path socket_path_{(std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock")};
-    std::unordered_map<uvw::OSFileDescriptor::Type, std::vector<raven::config_id_st>> config_id_registry_;
+    std::unordered_map<uvw::OSFileDescriptor::Type, raven::client> config_clients_registry_;
     config_db db_;
     bool error_occurred{false};
     const std::unordered_map<std::string, std::function<void(json::json &, uvw::PipeHandle &)>>
@@ -374,7 +380,7 @@ namespace raven
                     CHECK(json_data == expected_answer);
                 } else {
                     CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
-                        expected_answer.at("REQUEST_STATE").get<std::string>());
+                    expected_answer.at("REQUEST_STATE").get<std::string>());
                 }
                 sock.close();
             });
