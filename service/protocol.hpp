@@ -117,12 +117,12 @@ namespace raven
   //! CONFIG_UNLOAD
   struct config_unload
   {
-    std::uint32_t id;
+    config_id_st id;
   };
 
   inline void from_json(const raven::json::json &json_data, config_unload &cfg)
   {
-      cfg.id = json_data.at(config_id).get<std::uint32_t>();
+      cfg.id = config_id_st{json_data.at(config_id).get<int>()};
   }
 
   //! CONFIG_INCLUDE
