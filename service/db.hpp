@@ -38,12 +38,20 @@ namespace raven
   inline constexpr const db_statement_st select_config_from_id_statement{
       R"(select config_text from config where id = ?;)"};
   inline constexpr const db_statement_st select_count_config_element_statement{R"(select count(*) from config;)"};
+  inline constexpr const db_statement_st update_config_text_from_id_statement{
+      R"(UPDATE config set config_text = ? where id = ?;)"};
 
   struct config_create_answer_db
   {
     config_key_st config_key;
     config_key_st readonly_config_key;
     config_id_st config_id;
+  };
+
+  struct config_include_answer_db
+  {
+    request_state state;
+    std::size_t nb_configs;
   };
 
   class config_db
@@ -163,19 +171,23 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         try {
-            auto functor_receive_data = [&setting_update_data](const std::string json_text) {
+            auto functor_receive_data = [&setting_update_data, this](const std::string json_text) {
                 auto json_data = json::json::parse(json_text);
                 for (auto&[key, value] : setting_update_data.settings_to_update.items()) {
                     json_data["SETTINGS"][key] = value;
                 }
                 DLOG_F(INFO, "json after update: %s", json_data.dump().c_str());
+                this->execute_statement(update_config_text_from_id_statement,
+                    json_data.dump().c_str(), setting_update_data.id.value());
             };
             throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement,
                                                                  setting_update_data.id.value());
             execute_statement(select_config_from_id_statement, setting_update_data.id.value()) >> functor_receive_data;
         }
         catch (const sqlite::errors::misuse &error) {
-            DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
+            DLOG_F(ERROR, "misuse of api or wrong id: %s, from sql: %s -> [with id = %d]", error.what(),
+                error.get_sql().c_str(),
+                setting_update_data.id.value());
             return request_state::unknown_id;
         }
         catch (const sqlite::sqlite_exception &error) {
@@ -187,6 +199,46 @@ namespace raven
             return request_state::db_error;
         }
         return request_state::success;
+    }
+
+    config_include_answer_db config_include(const config_include& config_include_data) noexcept
+    {
+        LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
+        config_include_answer_db answer{request_state::success, 0u};
+        try {
+            auto functor_receive_data = [this, &config_include_data, &answer](const std::string json_text) {
+                auto json_data = json::json::parse(json_text);
+                DLOG_F(INFO, "json before update: %s", json_data.dump().c_str());
+                auto& array_other_config = json_data["OTHER_CONFIG"];
+                array_other_config.push_back(config_include_data.src_id.value());
+                std::sort(begin(array_other_config), end(array_other_config));
+                auto last = std::unique(begin(array_other_config), end(array_other_config));
+                array_other_config.erase(last, end(array_other_config));
+                DLOG_F(INFO, "json after update: %s", json_data.dump().c_str());
+                answer.nb_configs = array_other_config.size();
+                this->execute_statement(update_config_text_from_id_statement,
+                                        json_data.dump().c_str(),
+                                        config_include_data.id.value());
+            };
+            throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement,
+                config_include_data.id.value());
+            throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement,
+                                                                 config_include_data.src_id.value());
+            execute_statement(select_config_from_id_statement, config_include_data.id.value()) >> functor_receive_data;
+        }
+        catch(const sqlite::errors::misuse& error) {
+            DLOG_F(ERROR, "misuse of api or wrong id: %s, from sql: %s -> [with dst_id = %d, src_id = %d]", error.what(),
+                   error.get_sql().c_str(),
+                   config_include_data.id.value(),
+                   config_include_data.src_id.value());
+            answer.state = request_state::unknown_id;
+            return answer;
+        }
+        catch(const std::exception& error) {
+            DLOG_F(ERROR, "%s", error.what());
+            answer.state = request_state::db_error;
+        }
+        return answer;
     }
 
   private:
@@ -275,6 +327,79 @@ namespace raven
             setting_update setting_update_data{config_create_answer.config_id, {{"foo", "bar"}, {"titi", 1}}};
             CHECK_EQ(static_cast<short>(db.settings_update(setting_update_data)),
                 static_cast<short>(request_state::success));
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+    }
+
+    TEST_CASE_CLASS("config include db") {
+        SUBCASE("include into nonexistent  destination") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
+            auto config_create_answer = db.config_create(config_create);
+            struct config_include config_include_data{config_id_st{42}, config_create_answer.config_id};
+            CHECK_EQ(static_cast<short>(db.config_include(config_include_data).state),
+                static_cast<short>(request_state::unknown_id));
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+
+        SUBCASE("include from nonexistent src") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
+            auto config_create_answer = db.config_create(config_create);
+            struct config_include config_include_data{config_create_answer.config_id, config_id_st{42}};
+            CHECK_EQ(static_cast<short>(db.config_include(config_include_data).state),
+                static_cast<short>(request_state::unknown_id));
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+
+        SUBCASE("include unique config into existent src") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
+            json::json config_create_second = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json;
+            auto config_create_answer = db.config_create(config_create);
+            auto config_create_answer_second = db.config_create(config_create_second);
+            struct config_include config_include_data{config_create_answer.config_id,
+                config_create_answer_second.config_id};
+            auto answer = db.config_include(config_include_data);
+            CHECK_EQ(static_cast<short>(answer.state), static_cast<short>(request_state::success));
+            CHECK_EQ(answer.nb_configs, 1u);
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+
+        SUBCASE("include multiple config into existent src") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
+            json::json config_create_second = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json;
+            json::json config_create_third = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_third"})"_json;
+            auto config_create_answer = db.config_create(config_create);
+            auto config_create_answer_second = db.config_create(config_create_second);
+            auto config_create_answer_third = db.config_create(config_create_third);
+            struct config_include config_include_data{config_create_answer.config_id,
+                                                      config_create_answer_second.config_id};
+            db.config_include(config_include_data);
+            config_include_data.src_id = config_create_answer_third.config_id;
+            auto answer = db.config_include(config_include_data);
+            CHECK_EQ(static_cast<short>(answer.state), static_cast<short>(request_state::success));
+            CHECK_EQ(answer.nb_configs, 2u);
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+
+        SUBCASE("include multiple config with same id into existent src") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
+            json::json config_create_second = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json;
+            json::json config_create_third = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_third"})"_json;
+            auto config_create_answer = db.config_create(config_create);
+            auto config_create_answer_second = db.config_create(config_create_second);
+            auto config_create_answer_third = db.config_create(config_create_third);
+            struct config_include config_include_data{config_create_answer.config_id,
+                                                      config_create_answer_second.config_id};
+            db.config_include(config_include_data);
+            config_include_data.src_id = config_create_answer_third.config_id;
+            db.config_include(config_include_data);
+            auto answer = db.config_include(config_include_data);
+            CHECK_EQ(static_cast<short>(answer.state), static_cast<short>(request_state::success));
+            CHECK_EQ(answer.nb_configs, 2u);
             std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
         }
     }

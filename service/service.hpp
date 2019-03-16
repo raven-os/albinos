@@ -201,10 +201,10 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<config_include>(json_data);
-        DLOG_F(INFO, "cfg.id: %d", cfg.id);
-        DLOG_F(INFO, "cfg.src: %s", cfg.src.c_str());
-        DLOG_F(INFO, "cfg.dst: %s", cfg.dst.c_str());
-        prepare_answer(sock);
+        DLOG_F(INFO, "cfg.id: %d", cfg.id.value());
+        DLOG_F(INFO, "cfg.src_id: %d", cfg.src_id.value());
+        auto answer = db_.config_include(cfg);
+        prepare_answer(sock, answer.state);
     }
 
     void update_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -490,9 +490,62 @@ namespace raven
 
     TEST_CASE_CLASS ("include_config request")
     {
-        auto data = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42,"SRC": "config_foo.json","DST": "config_bar.json"})"_json;
-        auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
-        test_client_server_communication(std::move(data), std::move(answer));
+        SUBCASE("include nonexistent config src && dst") {
+            auto data = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42, "SRC": 31})"_json;
+            auto answer = R"({"REQUEST_STATE":"UNKNOWN_ID"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer));
+        }
+        SUBCASE("include into nonexistent config") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
+            auto answer_second = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json);
+            auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42, "SRC": 31})"_json;
+            request["SRC"] = answer_second.config_id.value();
+            auto expected_answer = R"({"REQUEST_STATE":"UNKNOWN_ID"})"_json;
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+            test_setup_client(request, expected_answer, false, service_, client);
+            test_run_and_clean_client(service_, loop);
+        }
+
+        SUBCASE("include from nonexistent config") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
+            auto answer_second = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json);
+            auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42, "SRC": 31})"_json;
+            request["CONFIG_ID"] = answer_create.config_id.value();
+            auto expected_answer = R"({"REQUEST_STATE":"UNKNOWN_ID"})"_json;
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+            test_setup_client(request, expected_answer, false, service_, client);
+            test_run_and_clean_client(service_, loop);
+        }
+
+        SUBCASE("include from nonexistent config") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
+            auto answer_second = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json);
+            auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42, "SRC": 31})"_json;
+            request["CONFIG_ID"] = answer_create.config_id.value();
+            request["SRC"] = answer_second.config_id.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+            test_setup_client(request, expected_answer, false, service_, client);
+            test_run_and_clean_client(service_, loop);
+        }
     }
 
     TEST_CASE_CLASS ("update_setting request")
