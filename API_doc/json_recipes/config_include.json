@@ -1,6 +1,5 @@
 {
   "REQUEST_NAME": "CONFIG_INCLUDE",
   "CONFIG_ID": 42,
-  "SRC": "config_foo.json",
-  "DST": "config_bar.json"
+  "SRC": 13
 }

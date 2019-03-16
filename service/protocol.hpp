@@ -48,9 +48,8 @@ namespace raven
   inline constexpr const char config_name_keyword[] = "CONFIG_NAME";
   inline constexpr const char config_key_keyword[] = "CONFIG_KEY";
   inline constexpr const char config_read_only_key_keyword[] = "READONLY_CONFIG_KEY";
-  inline constexpr const char config_id[] = "CONFIG_ID";
+  inline constexpr const char config_id_keyword[] = "CONFIG_ID";
   inline constexpr const char config_include_src[] = "SRC";
-  inline constexpr const char config_include_dst[] = "DST";
   inline constexpr const char setting_name[] = "SETTING_NAME";
   inline constexpr const char settings_to_update_keyword[] = "SETTINGS_TO_UPDATE";
   //inline constexpr const char setting_value[] = "SETTING_VALUE";
@@ -122,22 +121,20 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, config_unload &cfg)
   {
-      cfg.id = config_id_st{json_data.at(config_id).get<int>()};
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<int>()};
   }
 
   //! CONFIG_INCLUDE
   struct config_include
   {
-    std::uint32_t id;
-    std::string src;
-    std::string dst;
+    config_id_st id;
+    config_id_st src_id;
   };
 
   inline void from_json(const raven::json::json &json_data, config_include &cfg)
   {
-      cfg.id = json_data.at(config_id).get<std::uint32_t>();
-      cfg.src = json_data.at(config_include_src).get<std::string>();
-      cfg.dst = json_data.at(config_include_dst).get<std::string>();
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<int>()};
+      cfg.src_id = config_id_st{json_data.at(config_include_src).get<int>()};
   }
 
   //! SETTING_UPDATE
@@ -149,7 +146,7 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, setting_update &cfg)
   {
-      cfg.id = config_id_st{json_data.at(config_id).get<int>()};
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<int>()};
       cfg.settings_to_update = json_data.at(settings_to_update_keyword);
   }
 
@@ -162,7 +159,7 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, setting_remove &cfg)
   {
-      cfg.id = json_data.at(config_id).get<std::uint32_t>();
+      cfg.id = json_data.at(config_id_keyword).get<std::uint32_t>();
       cfg.setting_name = json_data.at(setting_name).get<std::string>();
   }
 
@@ -175,7 +172,7 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, setting_get &cfg)
   {
-      cfg.id = json_data.at(config_id).get<std::uint32_t>();
+      cfg.id = json_data.at(config_id_keyword).get<std::uint32_t>();
       cfg.setting_name = json_data.at(setting_name).get<std::string>();
   }
 
@@ -202,7 +199,7 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, alias_set &cfg)
   {
-      cfg.id = json_data.at(config_id).get<std::uint32_t>();
+      cfg.id = json_data.at(config_id_keyword).get<std::uint32_t>();
       cfg.setting_name = json_data.at(setting_name).get<std::string>();
       cfg.alias_name = json_data.at(alias_name).get<std::string>();
   }
@@ -216,14 +213,14 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, alias_unset &cfg)
   {
-      cfg.id = json_data.at(config_id).get<std::uint32_t>();
+      cfg.id = json_data.at(config_id_keyword).get<std::uint32_t>();
       cfg.alias_name = json_data.at(alias_name).get<std::string>();
   }
 
   template <typename TSetting>
   void fill_subscription_struct(const raven::json::json &json_data, TSetting &&cfg)
   {
-      cfg.id = json_data.at(config_id).get<std::uint32_t>();
+      cfg.id = json_data.at(config_id_keyword).get<std::uint32_t>();
       if (json_data.count(alias_name) > 0) {
           cfg.alias_name = json_data.at(alias_name).get<std::string>();
       } else if (json_data.count(setting_name) > 0) {
