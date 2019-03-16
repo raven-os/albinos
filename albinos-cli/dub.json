@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"raven-os"
+	],
+	"copyright": "Copyright © 2019, raven-os",
+	"description": "albinos command line interface",
+	"license": "MIT",
+	"name": "albinos-cli"
+}
