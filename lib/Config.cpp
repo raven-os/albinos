@@ -227,9 +227,10 @@ Albinos::ReturnedValue Albinos::Config::removeSetting(char const *name)
 ///
 /// \todo implementation
 ///
-Albinos::ReturnedValue Albinos::Config::include(Config const *inheritFrom)
+Albinos::ReturnedValue Albinos::Config::include(Key *inheritFrom, size_t position)
 {
   (void)inheritFrom;
+  (void)position;
   return SUCCESS;
 }
 

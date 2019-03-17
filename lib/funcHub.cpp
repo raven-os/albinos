@@ -101,11 +101,18 @@ Albinos::ReturnedValue Albinos::getSettingSize(Config const *config, char const 
   return config->getSettingSize(settingName, size);
 }
 
-Albinos::ReturnedValue Albinos::include(Config *config, Config const *inheritFrom)
+Albinos::ReturnedValue Albinos::include(Config *config, Key *inheritFrom, size_t position)
 {
   if (!config || !inheritFrom)
     return BAD_PARAMETERS;
-  return config->include(inheritFrom);
+  return config->include(inheritFrom, position);
+}
+
+Albinos::ReturnedValue Albinos::uninclude(Config *config, Key *otherConfig, size_t position)
+{
+  if (!config || !otherConfig)
+    return BAD_PARAMETERS;
+  return config->include(otherConfig, position);
 }
 
 Albinos::ReturnedValue Albinos::subscribeToSetting(Config *config, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, Subscription **subscription)
@@ -113,4 +120,63 @@ Albinos::ReturnedValue Albinos::subscribeToSetting(Config *config, char const *n
   if (!config || !name || !onChange)
     return BAD_PARAMETERS;
   return config->subscribeToSetting(name, data, onChange, subscription);
+}
+
+Albinos::ReturnedValue Albinos::getDependencies(Config const *config, Key **deps, size_t *size)
+{
+  if (!config || !deps || !size)
+    return BAD_PARAMETERS;
+  return config->getDependencies(deps, size);
+}
+
+void Albinos::destroyDependenciesArray(Key *deps, size_t size)
+{
+  if (!deps)
+    return;
+  for (size_t i = 0 ; i < size ; ++i)
+    delete (char*)deps[i].data;
+  delete[] deps;
+}
+
+Albinos::ReturnedValue Albinos::getLocalSettings(Config const *config, Setting **settings, size_t *size)
+{
+  if (!config || !settings || !size)
+    return BAD_PARAMETERS;
+  return config->getLocalSettings(settings, size);
+}
+
+void Albinos::destroySettingsArray(Setting *settings, size_t size)
+{
+  if (!settings)
+    return;
+  for (size_t i = 0 ; i < size ; ++i) {
+    delete settings[i].name;
+    delete settings[i].value;
+  }
+  delete[] settings;
+}
+
+Albinos::ReturnedValue Albinos::getLocalAliases(Config const *config, Alias **aliases, size_t *size)
+{
+  if (!config || !aliases || !size)
+    return BAD_PARAMETERS;
+  return config->getLocalAliases(aliases, size);
+}
+
+void Albinos::destroyAliasesArray(Alias *aliases, size_t size)
+{
+  if (!aliases)
+    return;
+  for (size_t i = 0 ; i < size ; ++i) {
+    delete aliases[i].alias;
+    delete aliases[i].setting;
+  }
+  delete[] aliases;
+}
+
+Albinos::ReturnedValue Albinos::deleteConfig(Config const *config)
+{
+  if (!config)
+    return BAD_PARAMETERS;
+  return config->deleteConfig();
 }

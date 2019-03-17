@@ -51,6 +51,7 @@ namespace Albinos
        READ_ONLY,
        READ_WRITE,
       };
+
     ///
     /// \brief contains a unique key for each configuration
     ///
@@ -60,6 +61,22 @@ namespace Albinos
       void *data;
       size_t size;
       enum KeyType type;
+    };
+
+    ///
+    /// \brief define a struct representing a setting
+    ///
+    struct Setting {
+      char *value;
+      char *name;
+    };
+
+    ///
+    /// \brief define a struct representing an alias
+    ///
+    struct Alias {
+      char *alias;
+      char *setting;
     };
 
     ///
@@ -97,6 +114,13 @@ namespace Albinos
     /// \return error code
     ///
     enum ReturnedValue createConfig(char const *configName, struct Config **returnedConfig);
+
+    ///
+    /// \brief delete the given config
+    /// \param the config to delete
+    /// \return error code
+    ///
+    enum ReturnedValue deleteConfig(struct Config const*);
 
     ///
     /// \brief get config from Key
@@ -192,12 +216,70 @@ namespace Albinos
     enum ReturnedValue getSettingSize(struct Config const*, char const *settingName, size_t *size);
 
     ///
-    /// \brief inherit from another config
-    /// \param the config to modify
-    /// \param 'inheritFrom' the other config which will be included
+    /// \brief get the ordered list of all dependencies
+    /// \param the config
+    /// \param 'deps' contain the keys to all dependencies
+    /// \param 'size' size of the 'deps' array
     /// \return error code
     ///
-    enum ReturnedValue include(struct Config *config, struct Config const *inheritFrom);
+    enum ReturnedValue getDependencies(struct Config const*, struct Key **deps, size_t *size);
+
+    ///
+    /// \brief destroy a dependencies array obtained with 'getDependencies'
+    /// \param 'deps' array to destroy
+    /// \param 'size' size of the 'deps' array
+    ///
+    void destroyDependenciesArray(struct Key *deps, size_t size);
+
+    ///
+    /// \brief get the ordered list of all local settings
+    /// \param the config
+    /// \param 'settings' ordered list of all local settings.
+    /// \param 'size' size of the 'settings' array
+    /// \return error code
+    ///
+    enum ReturnedValue getLocalSettings(struct Config const*, struct Setting **settings, size_t *size);
+
+    ///
+    /// \brief destroy a settings array obtained with 'getLocalSettings'
+    /// \param 'settings' array to destroy
+    /// \param 'size' size of the 'settings' array
+    ///
+    void destroySettingsArray(struct Setting *settings, size_t size);
+
+    ///
+    /// \brief get the ordered list of all local aliases
+    /// \param the config
+    /// \param 'aliases' ordered list of all local aliases.
+    /// \param 'size' size of the 'aliases' array
+    /// \return error code
+    ///
+    enum ReturnedValue getLocalAliases(struct Config const*, struct Alias **aliases, size_t *size);
+
+    ///
+    /// \brief destroy a aliases array obtained with 'getLocalAliases'
+    /// \param 'aliases' array to destroy
+    /// \param 'size' size of the 'aliases' array
+    ///
+    void destroyAliasesArray(struct Alias *aliases, size_t size);
+
+    ///
+    /// \brief inherit from another config
+    /// \param the config to modify
+    /// \param 'inheritFrom' the READ_ONLY key of the config to include
+    /// \param 'position' the position in the list of dependencies, where 0 is the first to be included.
+    /// \return error code
+    ///
+    enum ReturnedValue include(struct Config *config, struct Key *inheritFrom, size_t position);
+
+    ///
+    /// \brief uninclude a config
+    /// \param the config to modify
+    /// \param 'otherConfig' the READ_ONLY key of the config to include. Can be null if 'position' must be used
+    /// \param 'position' the position in the list of dependencies. Not used if 'otherConfig' isn't null.
+    /// \return error code
+    ///
+    enum ReturnedValue uninclude(struct Config *config, struct Key *otherConfig, size_t position);
 
     ///
     /// \brief be notified when a setting change

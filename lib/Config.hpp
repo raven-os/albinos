@@ -61,7 +61,14 @@ namespace Albinos
     ReturnedValue unsetAlias(char const *aliasName);
     ReturnedValue removeSetting(char const *name);
 
-    ReturnedValue include(Config const *inheritFrom);
+    ReturnedValue include(Key *inheritFrom, size_t position);
+    ReturnedValue uninclude(Key *otherConfig, size_t position);
+
+    ReturnedValue getDependencies(Key **deps, size_t *size) const;
+    ReturnedValue getLocalSettings(Setting **settings, size_t *size) const;
+    ReturnedValue getLocalAliases(Alias **aliases, size_t *size) const;
+
+    ReturnedValue deleteConfig() const;
 
     ReturnedValue subscribeToSetting(char const *settingName, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, Subscription **subscription);
 
