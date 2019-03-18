@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/albinos-cli
+albinos-cli.so
+albinos-cli.dylib
+albinos-cli.dll
+albinos-cli.a
+albinos-cli.lib
+albinos-cli-test-*
+*.exe
+*.o
+*.obj
+*.lst
