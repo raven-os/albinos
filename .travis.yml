@@ -1,0 +1,62 @@
+language: d
+matrix:
+  include:
+    # works on Precise and Trusty
+    #- os: linux
+    # addons:
+    #  apt:
+    #    sources:
+    #      - ubuntu-toolchain-r-test
+    #    packages:
+    #      - g++-9
+    #      - gcc-9
+    #env:
+    #  - MATRIX_EVAL="CC=gcc-9 && CXX=g++-9"
+
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env:
+        - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
+before_install:
+  - eval "${MATRIX_EVAL}"
+  - echo "lol"
+
+install:
+  - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
+  - mkdir ${DEPS_DIR} && cd ${DEPS_DIR}
+
+  - |
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      CMAKE_URL="https://cmake.org/files/v3.14/cmake-3.14.0-Linux-x86_64.tar.gz"
+      mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
+      export PATH=${DEPS_DIR}/cmake/bin:${PATH}
+    fi
+  - cd -
+script:
+  - mkdir build
+  - cd build
+  - ${DEPS_DIR}/cmake/bin/cmake -DCMAKE_CXX_COMPILER=g++-8 -DCMAKE_C_COMPILER=gcc-8 -DBUILD_TESTING=ON ..
+  - make service
+  - make service-test
+  - cd tests
+  - ./service-test
+  - cd ..
+  - ./service &
+  - SERVICE_PID=$!
+  - cd ../albinos-cli
+  - dub test
+  - kill -9 $SERVICE_PID
+after_success:
+  - wget https://gist.githubusercontent.com/Arignir/d9a8cb72c9a7c95b7981df56a188d5de/raw/3703660d851e81444c2ce26b3d41d98081e2f2c4/discord.sh
+  - chmod +x discord.sh
+  - ./discord.sh success "$DISCORD_WEBHOOK_URL"
+after_failure:
+  - wget https://gist.githubusercontent.com/Arignir/d9a8cb72c9a7c95b7981df56a188d5de/raw/3703660d851e81444c2ce26b3d41d98081e2f2c4/discord.sh
+  - chmod +x discord.sh
+  - ./discord.sh failure "$DISCORD_WEBHOOK_URL"
