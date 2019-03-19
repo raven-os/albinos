@@ -248,6 +248,20 @@ namespace Albinos
     void destroySettingsArray(struct Setting *settings, size_t size);
 
     ///
+    /// \brief get the ordered list of all local settings names
+    /// \param the config
+    /// \param 'names' ordered list of all local settings names. NULL terminated.
+    /// \return error code
+    ///
+    enum ReturnedValue getLocalSettingsNames(struct Config const*, char ***names);
+
+    ///
+    /// \brief destroy a settings names array obtained with 'getLocalSettingsNames'
+    /// \param 'names' array to destroy
+    ///
+    void destroySettingsNamesArray(char **names);
+
+    ///
     /// \brief get the ordered list of all local aliases
     /// \param the config
     /// \param 'aliases' ordered list of all local aliases.

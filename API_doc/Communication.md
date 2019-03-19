@@ -14,6 +14,7 @@ All the local settings are applied after the config inclusions.
 |*CONFIG_UNLOAD*| Unload config. |**CONFIG_ID**|*none*|
 |*CONFIG_DELETE*| Delete config. |**CONFIG_ID**|*none*|
 |*CONFIG_GET_DEPS*| Get the ordered list of all included configs. |**CONFIG_ID**|**DEPS** (array of READONLY_CONFIG_KEY)|
+|*CONFIG_GET_SETTINGS_NAMES*| Get the list of the name of all local settings. |**CONFIG_ID**|**SETTINGS_NAME** (list of settings names)|
 |*CONFIG_GET_SETTINGS*| Get the list of all local settings. |**CONFIG_ID**|**SETTINGS** (map of settings : "SETTING_NAME" -> "SETTING_VALUE")|
 |*CONFIG_GET_ALIASES*| Get the list of all local aliases. |**CONFIG_ID**|**ALIASES** (map of aliases : "ALIAS_NAME" -> "SETTING_NAME")|
 |*CONFIG_INCLUDE*| Include a config |**CONFIG_ID**<br>**SRC** (READONLY_CONFIG_KEY of config to include)<br>**INCLUDE_POSITION** (position in the list of inclusion, where 0 is the first to be included. If not specified, is equal to *0*)|*none*|

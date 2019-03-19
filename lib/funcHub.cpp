@@ -145,6 +145,22 @@ Albinos::ReturnedValue Albinos::getLocalSettings(Config const *config, Setting *
   return config->getLocalSettings(settings, size);
 }
 
+Albinos::ReturnedValue Albinos::getLocalSettingsNames(Config const *config, char ***names)
+{
+  if (!config || !names)
+    return BAD_PARAMETERS;
+  return config->getLocalSettingsNames(names);
+}
+
+void Albinos::destroySettingsNamesArray(char **names)
+{
+  if (!names)
+    return;
+  for (size_t i = 0 ; names[i] ; ++i)
+    delete names[i];
+  delete[] names;
+}
+
 void Albinos::destroySettingsArray(Setting *settings, size_t size)
 {
   if (!settings)

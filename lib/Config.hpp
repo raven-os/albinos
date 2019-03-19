@@ -66,6 +66,7 @@ namespace Albinos
 
     ReturnedValue getDependencies(Key **deps, size_t *size) const;
     ReturnedValue getLocalSettings(Setting **settings, size_t *size) const;
+    ReturnedValue getLocalSettingsNames(char ***names) const;
     ReturnedValue getLocalAliases(Alias **aliases, size_t *size) const;
 
     ReturnedValue deleteConfig() const;
