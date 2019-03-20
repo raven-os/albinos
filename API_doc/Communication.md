@@ -13,12 +13,12 @@ All the local settings are applied after the config inclusions.
 |*CONFIG_LOAD*| Load an existing config. |**CONFIG_KEY** *or* **READONLY_CONFIG_KEY**| **CONFIG_NAME**<br>**CONFIG_ID**|
 |*CONFIG_UNLOAD*| Unload config. |**CONFIG_ID**|*none*|
 |*CONFIG_DELETE*| Delete config. |**CONFIG_ID**|*none*|
-|*CONFIG_GET_DEPS*| Get the ordered list of all included configs. |**CONFIG_ID**|**DEPS** (array of READONLY_CONFIG_KEY)|
+|*CONFIG_GET_DEPS*| Get the ordered list of all included configs. |**CONFIG_ID**|**DEPS** (array of CONFIG_ID giving read-only access to each dependency)|
 |*CONFIG_GET_SETTINGS_NAMES*| Get the list of the name of all local settings. |**CONFIG_ID**|**SETTINGS_NAME** (list of settings names)|
 |*CONFIG_GET_SETTINGS*| Get the list of all local settings. |**CONFIG_ID**|**SETTINGS** (map of settings : "SETTING_NAME" -> "SETTING_VALUE")|
 |*CONFIG_GET_ALIASES*| Get the list of all local aliases. |**CONFIG_ID**|**ALIASES** (map of aliases : "ALIAS_NAME" -> "SETTING_NAME")|
-|*CONFIG_INCLUDE*| Include a config |**CONFIG_ID**<br>**SRC** (READONLY_CONFIG_KEY of config to include)<br>**INCLUDE_POSITION** (position in the list of inclusion, where 0 is the first to be included. If not specified, is equal to *0*)|*none*|
-|*CONFIG_UNINCLUDE*| Uninclude a config |**CONFIG_ID**<br>**SRC** (READONLY_CONFIG_KEY of config to uninclude) *or* <br>**INDEX** (position in the list of inclusion)|*none*|
+|*CONFIG_INCLUDE*| Include a config |**CONFIG_ID**<br>**SRC** (a config_id of config to include)<br>**INCLUDE_POSITION** (position in the list of inclusion, where 0 is the first to be included. If not specified, is equal to *0*)|*none*|
+|*CONFIG_UNINCLUDE*| Uninclude a config |**CONFIG_ID**<br>**SRC** (a config_id corresponding to the wanted config) *or* <br>**INDEX** (position in the list of inclusion)|*none*|
 |*SETTING_UPDATE*| Update or create setting |**CONFIG_ID**<br>**SETTINGS_TO_UPDATE**|*none*|
 |*SETTING_REMOVE*| Remove setting |**CONFIG_ID**<br>**SETTING_NAME**|*none*|
 |*SETTING_GET*| Get setting |**CONFIG_ID**<br>**SETTING_NAME**|**SETTING_VALUE**|
