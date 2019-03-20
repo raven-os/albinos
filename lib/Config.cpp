@@ -129,21 +129,24 @@ Albinos::Config::Config(std::string const &name)
 }
 
 Albinos::Config::Config(Key const &givenKey)
-  : name("")
 {
   initSocket();
   loadConfig(givenKey);
 }
 
+Albinos::Config::Config(uint32_t configId)
+  : configId(configId)
+{
+  initSocket();
+}
+
 Albinos::Config::~Config()
 {
-  if (key || roKey) {
-    json request;
-    request["REQUEST_NAME"] = "CONFIG_UNLOAD";
-    request["CONFIG_ID"] = configId;
-    sendJson(request);
-    socket->close();
-  }
+  json request;
+  request["REQUEST_NAME"] = "CONFIG_UNLOAD";
+  request["CONFIG_ID"] = configId;
+  sendJson(request);
+  socket->close();
 }
 
 Albinos::ReturnedValue Albinos::Config::getKey(Key *configKey) const

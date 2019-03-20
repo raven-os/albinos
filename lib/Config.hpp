@@ -26,7 +26,7 @@ namespace Albinos
 
     using json = nlohmann::json;
 
-    std::string name;
+    std::optional<std::string> name;
     uint32_t configId;
     std::string lastRequestedValue;
 
@@ -48,6 +48,7 @@ namespace Albinos
 
     Config(std::string const &name);
     Config(Key const &key);
+    Config(uint32_t configId);
     ~Config();
 
     ReturnedValue getKey(Key *configKey) const;
@@ -64,7 +65,7 @@ namespace Albinos
     ReturnedValue include(Key *inheritFrom, size_t position);
     ReturnedValue uninclude(Key *otherConfig, size_t position);
 
-    ReturnedValue getDependencies(Key **deps, size_t *size) const;
+    ReturnedValue getDependencies(Config **deps, size_t *size) const;
     ReturnedValue getLocalSettings(Setting **settings, size_t *size) const;
     ReturnedValue getLocalSettingsNames(char ***names) const;
     ReturnedValue getLocalAliases(Alias **aliases, size_t *size) const;

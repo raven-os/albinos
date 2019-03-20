@@ -218,18 +218,18 @@ namespace Albinos
     ///
     /// \brief get the ordered list of all dependencies
     /// \param the config
-    /// \param 'deps' contain the keys to all dependencies
+    /// \param 'deps' contain all dependencies
     /// \param 'size' size of the 'deps' array
     /// \return error code
     ///
-    enum ReturnedValue getDependencies(struct Config const*, struct Key **deps, size_t *size);
+    enum ReturnedValue getDependencies(struct Config const*, struct Config **deps, size_t *size);
 
     ///
     /// \brief destroy a dependencies array obtained with 'getDependencies'
     /// \param 'deps' array to destroy
     /// \param 'size' size of the 'deps' array
     ///
-    void destroyDependenciesArray(struct Key *deps, size_t size);
+    void destroyDependenciesArray(struct Config *deps, size_t size);
 
     ///
     /// \brief get the ordered list of all local settings

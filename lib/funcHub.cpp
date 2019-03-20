@@ -122,19 +122,17 @@ Albinos::ReturnedValue Albinos::subscribeToSetting(Config *config, char const *n
   return config->subscribeToSetting(name, data, onChange, subscription);
 }
 
-Albinos::ReturnedValue Albinos::getDependencies(Config const *config, Key **deps, size_t *size)
+Albinos::ReturnedValue Albinos::getDependencies(Config const *config, Config **deps, size_t *size)
 {
   if (!config || !deps || !size)
     return BAD_PARAMETERS;
   return config->getDependencies(deps, size);
 }
 
-void Albinos::destroyDependenciesArray(Key *deps, size_t size)
+void Albinos::destroyDependenciesArray(Config *deps, size_t size)
 {
   if (!deps)
     return;
-  for (size_t i = 0 ; i < size ; ++i)
-    delete (char*)deps[i].data;
   delete[] deps;
 }
 
