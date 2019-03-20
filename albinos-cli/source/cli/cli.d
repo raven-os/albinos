@@ -28,15 +28,37 @@ class CLI
         }
     }
 
-    private void load_config(string[] args)
+    private config_load_answer load_config(string[] args)
     in(args !is null, "args cannot be null")
     in(args.length == 2, "need 1 arguments")
+    out(r; r.state == "SUCCESS", "load_config should succeed")
+    out(r; !r.config_name.empty, "config_name should not be empty")
+    out(r; r.config_id > 0, "config_id should be different than 0")
     {
         string config_key;
-        getopt(args, "key", &config_key);
+        string readonly_config_key;
+        getopt(args, "key", &config_key, "readonly_key", &readonly_config_key);
         auto cfg = deserialize_to!config_load("../API_doc/json_recipes/config_load.json");
         cfg.config_key = config_key;
+        cfg.readonly_config_key = readonly_config_key;
         writeln(cfg);
+        writeln(cfg.serializeToJsonPretty);
+        client_.socket.send(cfg.serializeToJson);
+        auto answer = new ubyte[256];
+        client_.socket.receive(answer);
+        (cast(string) answer).writeln;
+        return (cast(string) answer).deserialize!config_load_answer;
+    }
+
+
+    unittest
+    {
+        auto cli = new CLI("/tmp/raven-os_service_albinos.sock");
+        auto create_answer = cli.create_config(["create_config", "--name=toto"]);
+        assert(create_answer.state == "SUCCESS", "should be SUCCESS");
+        auto load_answer = cli.load_config(["load_config", "--key=" ~ create_answer.config_key]);
+        assert(load_answer.state == "SUCCESS", "should be SUCCESS");
+        //TODO: add more tests
     }
 
     private config_create_answer create_config(string[] args)

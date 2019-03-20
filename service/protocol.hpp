@@ -91,9 +91,9 @@ namespace raven
   inline void from_json(const raven::json::json &json_data, config_load &cfg)
   {
       //! We are checking if the config key keyword is present, otherwise it's probably a read only value
-      if (json_data.count(config_key_keyword) > 0) {
+      if (json_data.count(config_key_keyword) > 0 && json_data.at(config_key_keyword).is_string()) {
           cfg.config_key = config_key_st{json_data.at(config_key_keyword).get<std::string>()};
-      } else if (json_data.count(config_read_only_key_keyword) > 0) {
+      } else if (json_data.count(config_read_only_key_keyword) > 0 && json_data.at(config_read_only_key_keyword).is_string()) {
           cfg.config_read_only_key = config_key_st{json_data.at(config_read_only_key_keyword).get<std::string>()};
       }
   }

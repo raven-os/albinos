@@ -19,4 +19,12 @@ struct config_load
 {
     @serializationKeys("REQUEST_NAME") string request_name;
     @serializationKeys("CONFIG_KEY") string config_key;
+    @serializationKeys("READONLY_CONFIG_KEY") string readonly_config_key;
+}
+
+struct config_load_answer
+{
+    @serializationKeys("REQUEST_STATE") string state;
+    @serializationKeys("CONFIG_NAME") string config_name;
+    @serializationKeys("CONFIG_ID") int config_id;
 }

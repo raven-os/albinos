@@ -1,4 +1,4 @@
 {
   "REQUEST_NAME": "CONFIG_LOAD",
-  "READONLY_CONFIG_KEY": "42Key"
+  "CONFIG_KEY": "42Key"
 }
