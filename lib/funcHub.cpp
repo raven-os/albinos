@@ -188,7 +188,7 @@ void Albinos::destroyAliasesArray(Alias *aliases, size_t size)
   delete[] aliases;
 }
 
-Albinos::ReturnedValue Albinos::deleteConfig(Config const *config)
+Albinos::ReturnedValue Albinos::destroyConfig(Config const *config)
 {
   if (!config)
     return BAD_PARAMETERS;
