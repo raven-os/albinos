@@ -101,14 +101,14 @@ Albinos::ReturnedValue Albinos::getSettingSize(Config const *config, char const 
   return config->getSettingSize(settingName, size);
 }
 
-Albinos::ReturnedValue Albinos::include(Config *config, Key *inheritFrom, size_t position)
+Albinos::ReturnedValue Albinos::include(Config *config, Key *inheritFrom, int position)
 {
   if (!config || !inheritFrom)
     return BAD_PARAMETERS;
   return config->include(inheritFrom, position);
 }
 
-Albinos::ReturnedValue Albinos::uninclude(Config *config, Key *otherConfig, size_t position)
+Albinos::ReturnedValue Albinos::uninclude(Config *config, Key *otherConfig, int position)
 {
   if (!config || !otherConfig)
     return BAD_PARAMETERS;

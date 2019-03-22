@@ -62,8 +62,8 @@ namespace Albinos
     ReturnedValue unsetAlias(char const *aliasName);
     ReturnedValue removeSetting(char const *name);
 
-    ReturnedValue include(Key *inheritFrom, size_t position);
-    ReturnedValue uninclude(Key *otherConfig, size_t position);
+    ReturnedValue include(Key *inheritFrom, int position);
+    ReturnedValue uninclude(Key *otherConfig, int position);
 
     ReturnedValue getDependencies(Config **deps, size_t *size) const;
     ReturnedValue getLocalSettings(Setting **settings, size_t *size) const;

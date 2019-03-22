@@ -17,8 +17,8 @@ All the local settings are applied after the config inclusions.
 |*CONFIG_GET_SETTINGS_NAMES*| Get the list of the name of all local settings. |**CONFIG_ID**|**SETTINGS_NAME** (list of settings names)|
 |*CONFIG_GET_SETTINGS*| Get the list of all local settings. |**CONFIG_ID**|**SETTINGS** (map of settings : "SETTING_NAME" -> "SETTING_VALUE")|
 |*CONFIG_GET_ALIASES*| Get the list of all local aliases. |**CONFIG_ID**|**ALIASES** (map of aliases : "ALIAS_NAME" -> "SETTING_NAME")|
-|*CONFIG_INCLUDE*| Include a config |**CONFIG_ID**<br>**SRC** (a config_id of config to include)<br>**INCLUDE_POSITION** (position in the list of inclusion, where 0 is the first to be included. If not specified, is equal to *0*)|*none*|
-|*CONFIG_UNINCLUDE*| Uninclude a config |**CONFIG_ID**<br>**SRC** (a config_id corresponding to the wanted config) *or* <br>**INDEX** (position in the list of inclusion)|*none*|
+|*CONFIG_INCLUDE*| Include a config |**CONFIG_ID**<br>**SRC** (a config_id of config to include)<br>**INCLUDE_POSITION** (position in the list of inclusion, where 0 is the first to be included. Negative values can be used, and then position will be *size* decreased by value. If not specified, is equal to *-1*)|*none*|
+|*CONFIG_UNINCLUDE*| Uninclude a config |**CONFIG_ID**<br>**SRC** (a config_id corresponding to the wanted config) *or* <br>**INDEX** (position in the list of inclusion, working like in *CONFIG_INCLUDE*)|*none*|
 |*SETTING_UPDATE*| Update or create setting |**CONFIG_ID**<br>**SETTINGS_TO_UPDATE**|*none*|
 |*SETTING_REMOVE*| Remove setting |**CONFIG_ID**<br>**SETTING_NAME**|*none*|
 |*SETTING_GET*| Get setting |**CONFIG_ID**<br>**SETTING_NAME**|**SETTING_VALUE**|

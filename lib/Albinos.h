@@ -281,10 +281,10 @@ namespace Albinos
     /// \brief inherit from another config
     /// \param the config to modify
     /// \param 'inheritFrom' the READ_ONLY key of the config to include
-    /// \param 'position' the position in the list of dependencies, where 0 is the first to be included.
+    /// \param 'position' the position in the list of dependencies, where 0 is the first to be included. Negative values can be used, and then position will be *size* decreased by value.
     /// \return error code
     ///
-    enum ReturnedValue include(struct Config *config, struct Key *inheritFrom, size_t position);
+    enum ReturnedValue include(struct Config *config, struct Key *inheritFrom, int position);
 
     ///
     /// \brief uninclude a config
@@ -293,7 +293,7 @@ namespace Albinos
     /// \param 'position' the position in the list of dependencies. Not used if 'otherConfig' isn't null.
     /// \return error code
     ///
-    enum ReturnedValue uninclude(struct Config *config, struct Key *otherConfig, size_t position);
+    enum ReturnedValue uninclude(struct Config *config, struct Key *otherConfig, int position);
 
     ///
     /// \brief be notified when a setting change
