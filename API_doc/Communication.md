@@ -12,7 +12,7 @@ All the local settings are applied after the config inclusions.
 |*CONFIG_CREATE*|Create a new config.|**CONFIG_NAME**|**CONFIG_KEY**<br>**READONLY_CONFIG_KEY**|
 |*CONFIG_LOAD*| Load an existing config. |**CONFIG_KEY** *or* **READONLY_CONFIG_KEY**| **CONFIG_NAME**<br>**CONFIG_ID**|
 |*CONFIG_UNLOAD*| Unload config. |**CONFIG_ID**|*none*|
-|*CONFIG_DELETE*| Delete config. |**CONFIG_ID**|*none*|
+|*CONFIG_DESTROY*| Destroy config. |**CONFIG_ID**|*none*|
 |*CONFIG_GET_DEPS*| Get the ordered list of all included configs. |**CONFIG_ID**|**DEPS** (array of CONFIG_ID giving read-only access to each dependency)|
 |*CONFIG_GET_SETTINGS_NAMES*| Get the list of the name of all local settings. |**CONFIG_ID**|**SETTINGS_NAME** (list of settings names)|
 |*CONFIG_GET_SETTINGS*| Get the list of all local settings. |**CONFIG_ID**|**SETTINGS** (map of settings : "SETTING_NAME" -> "SETTING_VALUE")|
