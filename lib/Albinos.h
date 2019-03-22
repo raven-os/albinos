@@ -120,7 +120,7 @@ namespace Albinos
     /// \param the config to delete
     /// \return error code
     ///
-    enum ReturnedValue deleteConfig(struct Config const*);
+    enum ReturnedValue destroyConfig(struct Config const*);
 
     ///
     /// \brief get config from Key
