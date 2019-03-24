@@ -55,7 +55,7 @@ script:
   - cd ../
 
 after_script:
-  - cd build/tests && curl -s https://report.ci/upload.py | python - --include='*.xml' --framework=junit
+  - cd build/tests && python <(curl -s https://raw.githubusercontent.com/report-ci/scripts/master/upload.py)
 after_success:
   - wget https://gist.githubusercontent.com/Arignir/d9a8cb72c9a7c95b7981df56a188d5de/raw/3703660d851e81444c2ce26b3d41d98081e2f2c4/discord.sh
   - chmod +x discord.sh
