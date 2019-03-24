@@ -121,7 +121,7 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, config_unload &cfg)
   {
-      cfg.id = config_id_st{json_data.at(config_id_keyword).get<int>()};
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::size_t>()};
   }
 
   //! CONFIG_INCLUDE
@@ -133,8 +133,8 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, config_include &cfg)
   {
-      cfg.id = config_id_st{json_data.at(config_id_keyword).get<int>()};
-      cfg.src_id = config_id_st{json_data.at(config_include_src).get<int>()};
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::size_t>()};
+      cfg.src_id = config_id_st{json_data.at(config_include_src).get<std::size_t>()};
   }
 
   //! SETTING_UPDATE
@@ -146,7 +146,7 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, setting_update &cfg)
   {
-      cfg.id = config_id_st{json_data.at(config_id_keyword).get<int>()};
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::size_t>()};
       cfg.settings_to_update = json_data.at(settings_to_update_keyword);
   }
 

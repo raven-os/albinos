@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 #include <sqlite_modern_cpp.h>
 #include <random>
@@ -46,6 +47,7 @@ namespace raven
     config_key_st config_key;
     config_key_st readonly_config_key;
     config_id_st config_id;
+    std::optional<request_state> state_error;
   };
 
   struct config_include_answer_db
@@ -84,7 +86,8 @@ namespace raven
         using namespace std::string_literals;
         config_key_st config_key;
         config_key_st readonly_config_key;
-        config_id_st request_state_value{static_cast<int>(request_state::db_error)};
+        config_id_st request_state_value;
+        std::optional<request_state> state_error = std::nullopt;
         for (nb_tries_ = 0; nb_tries_ < maximum_retries_; ++nb_tries_) {
             try {
                 json::json data_to_bind;
@@ -106,24 +109,28 @@ namespace raven
                         readonly_config_key = config_key_st{readonly_config_key_};
                     };
                 //success;
-                request_state_value = config_id_st{static_cast<int>(database_.last_insert_rowid())};
+                request_state_value = config_id_st{static_cast<std::size_t>(database_.last_insert_rowid())};
+                state_error = std::nullopt;
                 break;
             }
             catch (const sqlite::errors::constraint_unique &error) {
                 DLOG_F(ERROR, "%s, from sql -> %s", error.what(), error.get_sql().c_str());
+                state_error = request_state::db_error;
                 /* error constraint violated, we retry with a new random_string() */
             }
             catch (const sqlite::sqlite_exception &error) {
                 DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
+                state_error = request_state::db_error;
                 /* this is another error from database, we retry with a new random_string() */
             }
             catch (const std::exception &error) {
                 DLOG_F(ERROR, "error: %s", error.what());
+                state_error = request_state::db_error;
                 /* this error seem's fatal, we break */
                 break;
             }
         }
-        return {config_key, readonly_config_key, request_state_value};
+        return {config_key, readonly_config_key, request_state_value, state_error};
     }
 
     config_load_answer config_load(const config_load &config_load_data) noexcept
@@ -133,7 +140,7 @@ namespace raven
         try {
             auto functor_receive_data = [&db_answer](const std::string json_text, int id) {
                 auto json_data = json::json::parse(json_text);
-                db_answer.config_id = config_id_st{id};
+                db_answer.config_id = config_id_st{static_cast<std::size_t>(id)};
                 db_answer.config_name = json_data.at(config_name_keyword).get<std::string>();
             };
             int nb_count = 0;
@@ -185,7 +192,7 @@ namespace raven
             execute_statement(select_config_from_id_statement, setting_update_data.id.value()) >> functor_receive_data;
         }
         catch (const sqlite::errors::misuse &error) {
-            DLOG_F(ERROR, "misuse of api or wrong id: %s, from sql: %s -> [with id = %d]", error.what(),
+            DLOG_F(ERROR, "misuse of api or wrong id: %s, from sql: %s -> [with id = %lu]", error.what(),
                 error.get_sql().c_str(),
                 setting_update_data.id.value());
             return request_state::unknown_id;
@@ -203,6 +210,7 @@ namespace raven
 
     config_include_answer_db config_include(const config_include& config_include_data) noexcept
     {
+        //TODO: Communication.md has changed, need to be modified
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         config_include_answer_db answer{request_state::success, 0u};
         try {
@@ -227,7 +235,7 @@ namespace raven
             execute_statement(select_config_from_id_statement, config_include_data.id.value()) >> functor_receive_data;
         }
         catch(const sqlite::errors::misuse& error) {
-            DLOG_F(ERROR, "misuse of api or wrong id: %s, from sql: %s -> [with dst_id = %d, src_id = %d]", error.what(),
+            DLOG_F(ERROR, "misuse of api or wrong id: %s, from sql: %s -> [with dst_id = %lu, src_id = %lu]", error.what(),
                    error.get_sql().c_str(),
                    config_include_data.id.value(),
                    config_include_data.src_id.value());
@@ -267,9 +275,9 @@ namespace raven
             for (int i = 0; i < 100; ++i) {
                 WARN_NE(db.config_create(config_create).config_id.value(),
                     static_cast<int>(request_state::db_error));
-                if (db.config_create(config_create).config_id.value() == static_cast<int>(request_state::db_error)) {
+                /*if (db.config_create(config_create).config_id.value() == static_cast<int>(request_state::db_error)) {
                     break;
-                }
+                }*/
             }
         }
         std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");

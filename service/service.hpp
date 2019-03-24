@@ -164,15 +164,19 @@ namespace raven
     {
         auto cfg = fill_request<config_create>(json_data);
         auto config_create_db_result = db_.config_create(json_data);
-        if (config_create_db_result.config_id.value() != static_cast<int>(request_state::db_error)) {
-            config_clients_registry_.at(sock.fileno()) += config_create_db_result.config_id;
+        if (!config_create_db_result.state_error.has_value()) {
+            using namespace std::string_literals;
+            auto unique_id = std::hash<std::string>()(cfg.config_name + "_"s + std::to_string(sock.fileno()) + "_"s +
+                std::to_string(config_create_db_result.config_id.value()));
+            config_clients_registry_.at(sock.fileno()) += std::make_pair(config_id_st{unique_id},
+                config_create_db_result.config_id);
             const config_create_answer answer{config_create_db_result.config_key,
                                               config_create_db_result.readonly_config_key,
                                               convert_request_state.at(request_state::success)};
             prepare_answer(sock, answer);
         } else {
             const config_create_answer answer{config_key_st{""}, config_key_st{""},
-                                              convert_request_state.at(request_state::db_error)};
+                                              convert_request_state.at(config_create_db_result.state_error.value())};
             prepare_answer(sock, answer);
         }
     }
@@ -184,7 +188,12 @@ namespace raven
         DLOG_IF_F(INFO, cfg.config_key.has_value(), "cfg.config_key: %s", cfg.config_key.value().value().c_str());
         DLOG_IF_F(INFO, cfg.config_read_only_key.has_value(), "cfg.config_read_only_key: %s",
                   cfg.config_read_only_key.value().value().c_str());
+
         auto answer = db_.config_load(cfg);
+        using namespace std::string_literals;
+        //TODO:  Use bimap here would be better
+        answer.config_id = config_id_st{(std::hash<std::string>()(answer.config_name + "_"s +
+                                        std::to_string(sock.fileno()) + "_"s + std::to_string(answer.config_id.value())))};
         prepare_answer(sock, answer);
     }
 
@@ -199,10 +208,11 @@ namespace raven
 
     void include_config(json::json &json_data, uvw::PipeHandle &sock)
     {
+        //TODO: Communication.md has changed, need to be modified
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<config_include>(json_data);
-        DLOG_F(INFO, "cfg.id: %d", cfg.id.value());
-        DLOG_F(INFO, "cfg.src_id: %d", cfg.src_id.value());
+        DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
+        DLOG_F(INFO, "cfg.src_id: %lu", cfg.src_id.value());
         auto answer = db_.config_include(cfg);
         prepare_answer(sock, answer.state);
     }
@@ -211,7 +221,7 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<setting_update>(json_data);
-        DLOG_F(INFO, "cfg.id: %d", cfg.id.value());
+        DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "settings_to_update: %s", cfg.settings_to_update.dump().c_str());
         auto state = db_.settings_update(cfg);
         prepare_answer(sock, state);
@@ -444,7 +454,7 @@ namespace raven
             CHECK_FALSE(service_.create_socket());
             auto loop = uvw::Loop::getDefault();
             auto client = loop->resource<uvw::PipeHandle>();
-            test_setup_client(request, expected_answer, false, service_, client);
+            test_setup_client(request, expected_answer, true, service_, client);
             test_run_and_clean_client(service_, loop);
         };
 
@@ -460,7 +470,7 @@ namespace raven
             CHECK_FALSE(service_.create_socket());
             auto loop = uvw::Loop::getDefault();
             auto client = loop->resource<uvw::PipeHandle>();
-            test_setup_client(request, expected_answer, false, service_, client);
+            test_setup_client(request, expected_answer, true, service_, client);
             test_run_and_clean_client(service_, loop);
         };
 
@@ -476,7 +486,7 @@ namespace raven
             CHECK_FALSE(service_.create_socket());
             auto loop = uvw::Loop::getDefault();
             auto client = loop->resource<uvw::PipeHandle>();
-            test_setup_client(request, expected_answer, false, service_, client);
+            test_setup_client(request, expected_answer, true, service_, client);
             test_run_and_clean_client(service_, loop);
         };
     }

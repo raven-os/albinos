@@ -9,7 +9,7 @@
 
 namespace raven
 {
-  using config_id_st = st::type<int, struct config_id_tag, st::arithmetic>;
+  using config_id_st = st::type<std::size_t, struct config_id_tag, st::arithmetic>;
   using config_key_st = st::type<std::string, struct config_key_tag,
       st::equality_comparable,
       st::addable_with<const char *>,
