@@ -20,9 +20,10 @@ namespace raven
 
     client() = delete;
 
-    client &operator+=(std::pair<raven::config_id_st, raven::config_id_st> id)
+    client &operator+=(raven::config_id_st id)
     {
-        config_ids_.insert({{id.first.value(), id.second.value()}});
+        current_id++;
+        config_ids_.insert({{current_id.value(), id.value()}});
         return *this;
     }
 
@@ -33,8 +34,14 @@ namespace raven
         return *this;
     }
 
+    config_id_st get_current_id() const noexcept
+    {
+        return current_id;
+    }
+
   private:
     client_ptr sock_;
+    raven::config_id_st current_id{0};
     std::unordered_map<raven::config_id_st::value_type, raven::config_id_st::value_type> config_ids_;
   };
 };

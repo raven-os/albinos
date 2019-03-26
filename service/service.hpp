@@ -165,11 +165,6 @@ namespace raven
         auto cfg = fill_request<config_create>(json_data);
         auto config_create_db_result = db_.config_create(json_data);
         if (!config_create_db_result.state_error.has_value()) {
-            using namespace std::string_literals;
-            auto unique_id = std::hash<std::string>()(cfg.config_name + "_"s + std::to_string(sock.fileno()) + "_"s +
-                std::to_string(config_create_db_result.config_id.value()));
-            config_clients_registry_.at(sock.fileno()) += std::make_pair(config_id_st{unique_id},
-                config_create_db_result.config_id);
             const config_create_answer answer{config_create_db_result.config_key,
                                               config_create_db_result.readonly_config_key,
                                               convert_request_state.at(request_state::success)};
@@ -190,10 +185,8 @@ namespace raven
                   cfg.config_read_only_key.value().value().c_str());
 
         auto answer = db_.config_load(cfg);
-        using namespace std::string_literals;
-        //TODO:  Use bimap here would be better
-        answer.config_id = config_id_st{(std::hash<std::string>()(answer.config_name + "_"s +
-                                        std::to_string(sock.fileno()) + "_"s + std::to_string(answer.config_id.value())))};
+        config_clients_registry_.at(sock.fileno()) += answer.config_id;
+        answer.config_id = config_clients_registry_.at(sock.fileno()).get_current_id();
         prepare_answer(sock, answer);
     }
 
