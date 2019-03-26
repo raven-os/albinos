@@ -70,7 +70,7 @@ namespace Albinos
     ReturnedValue getLocalSettingsNames(char ***names) const;
     ReturnedValue getLocalAliases(Alias **aliases, size_t *size) const;
 
-    ReturnedValue destroyConfig() const;
+    ReturnedValue deleteConfig() const;
 
     ReturnedValue subscribeToSetting(char const *settingName, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, Subscription **subscription);
 
