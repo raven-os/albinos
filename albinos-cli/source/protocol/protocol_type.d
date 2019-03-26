@@ -26,5 +26,5 @@ struct config_load_answer
 {
     @serializationKeys("REQUEST_STATE") string state;
     @serializationKeys("CONFIG_NAME") string config_name;
-    @serializationKeys("CONFIG_ID") ulong config_id;
+    @serializationKeys("CONFIG_ID") size_t config_id;
 }
