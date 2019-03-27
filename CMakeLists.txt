@@ -12,15 +12,6 @@ project(albinos)
 ##! Prerequisites CTEST
 enable_testing()
 
-
-#if (NOT DEFINED ENV{CLAWS_ROOT_DEV})
-#    message(STATUS "using insalled version of claws")
-#    find_package(claws CONFIG REQUIRED)
-#else ()
-#    message(STATUS "using development version of claws")
-#    add_subdirectory($ENV{CLAWS_ROOT_DEV} build)
-#endif ()
-
 file(GLOB_RECURSE SOURCES_SERVICE service/*.cpp)
 file(GLOB_RECURSE SOURCES_LIB lib/*.cpp)
 
@@ -32,6 +23,6 @@ find_library(sqlite3_lib NAMES sqlite3)
 target_link_libraries(service PUBLIC uv_a ${sqlite3_lib} stdc++fs)
 target_sources(service PRIVATE vendor/loguru/loguru.cpp)
 target_include_directories(service PUBLIC vendor/uvw/src vendor/uvw/deps/libuv/include vendor/json/single_include/nlohmann vendor/sql/hdr vendor/doctest/doctest vendor/strong_type/include/ vendor/expected vendor/loguru)
-add_library(config SHARED ${SOURCES_LIB})
-target_include_directories(config PUBLIC vendor/uvw/src vendor/uvw/deps/libuv/include vendor/json/single_include/nlohmann)
+add_library(${PROJECT_NAME} SHARED ${SOURCES_LIB})
+target_include_directories(${PROJECT_NAME} PUBLIC vendor/uvw/src vendor/uvw/deps/libuv/include vendor/json/single_include/nlohmann)
 add_subdirectory(tests)
