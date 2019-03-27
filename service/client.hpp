@@ -22,8 +22,8 @@ namespace raven
 
     client &operator+=(raven::config_id_st id)
     {
-        current_id++;
-        config_ids_.insert({{current_id.value(), id.value()}});
+        last_id++;
+        config_ids_.insert({{last_id.value(), id.value()}});
         return *this;
     }
 
@@ -34,14 +34,14 @@ namespace raven
         return *this;
     }
 
-    config_id_st get_current_id() const noexcept
+    config_id_st get_last_id() const noexcept
     {
-        return current_id;
+        return last_id;
     }
 
   private:
     client_ptr sock_;
-    raven::config_id_st current_id{0};
+    raven::config_id_st last_id{0};
     std::unordered_map<raven::config_id_st::value_type, raven::config_id_st::value_type> config_ids_;
   };
 };

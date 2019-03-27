@@ -186,7 +186,7 @@ namespace raven
 
         auto answer = db_.config_load(cfg);
         config_clients_registry_.at(sock.fileno()) += answer.config_id;
-        answer.config_id = config_clients_registry_.at(sock.fileno()).get_current_id();
+        answer.config_id = config_clients_registry_.at(sock.fileno()).get_last_id();
         prepare_answer(sock, answer);
     }
 
