@@ -42,10 +42,44 @@ namespace raven
         return last_id;
     }
 
+    void subscribe(raven::config_id_st id, const std::string &setting_name)
+    {
+        sub_settings_.insert({id.value(), setting_name});
+    }
+
+    void unsubscribe(raven::config_id_st id, const std::string &setting_name)
+    {
+        DLOG_F(INFO, "unsubscribing setting: %s within config id: %d from client: %d", setting_name.c_str(), id.value(),
+               static_cast<int>(this->sock_->fileno()));
+        auto range = sub_settings_.equal_range(id.value());
+        for (auto it = range.first; it != range.second; ++it) {
+            if (it->second == setting_name) {
+                sub_settings_.erase(it);
+                break;
+            }
+        }
+    }
+
+    bool has_subscribed(raven::config_id_st id, const std::string &setting_name)
+    {
+        auto range = sub_settings_.equal_range(id.value());
+        for (auto it = range.first; it != range.second; ++it) {
+            if (it->second == setting_name)
+                return true;
+        }
+        return false;
+    }
+
+    client_ptr &get_socket()
+    {
+        return sock_;
+    }
+
   private:
     client_ptr sock_;
     raven::config_id_st last_id{0};
     std::unordered_map<raven::config_id_st::value_type, raven::config_id_st::value_type> config_ids_;
     std::unordered_map<raven::config_id_st::value_type, raven::config_id_st::value_type> reverse_config_ids_; // temporary workaround for a basic id lookup, will need in the future to be able to do that outside of the client class
+    std::unordered_multimap<raven::config_id_st::value_type, std::string> sub_settings_;
   };
 };

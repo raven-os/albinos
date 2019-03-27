@@ -220,6 +220,19 @@ namespace raven
         DLOG_F(INFO, "settings_to_update: %s", cfg.settings_to_update.dump().c_str());
         auto state = db_.settings_update(cfg);
         prepare_answer(sock, state);
+        // TODO : lookup de la db pour associer l'id temporaire du client qui a update a uvrai di dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
+        /*for (auto &[fileno, client] : config_clients_registry_)
+        {
+            for (auto&[key, value] : cfg.settings_to_update.items()) {
+
+                if (client.has_subscribed(cfg.id, key)) {
+                    const subscribe_event answer{cfg.id,
+                                                 key,
+                                                 subscribe_event_type::update_setting};
+                    prepare_answer(*client.get_socket(), answer);
+                }
+            }
+        }*/
     }
 
     void remove_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -229,6 +242,16 @@ namespace raven
         DLOG_F(INFO, "cfg.id: %d", cfg.id);
         DLOG_F(INFO, "cfg.setting_name: %s", cfg.setting_name.c_str());
         prepare_answer(sock);
+        // TODO : lookup de la db pour associer l'id temporaire du client qui a update a uvrai di dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
+        /*for (auto &[fileno, client] : config_clients_registry_)
+        {
+            if (client.has_subscribed(cfg.id, cfg.setting_name)) {
+                const subscribe_event answer{cfg.id,
+                                             cfg.setting_name,
+                                             subscribe_event_type::update_setting};
+                prepare_answer(*client.get_socket(), answer);
+            }
+        }*/
     }
 
     void get_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -270,7 +293,16 @@ namespace raven
         DLOG_F(INFO, "cfg.id: %d", cfg.id);
         DLOG_IF_F(INFO, cfg.setting_name.has_value(), "cfg.setting_name: %s", cfg.setting_name.value().c_str());
         DLOG_IF_F(INFO, cfg.alias_name.has_value(), "cfg.alias_name: %s", cfg.alias_name.value().c_str());
-        prepare_answer(sock);
+        if (cfg.setting_name.has_value())
+        {
+            config_clients_registry_.at(sock.fileno()).subscribe(cfg.id, cfg.setting_name.value());
+            // TODO
+            // if setting doesn't exist in config
+            //      prepare_answer(sock, request_state::unknown_setting);
+            // else
+            prepare_answer(sock);
+        } else // TODO handle alias case
+            prepare_answer(sock, request_state::internal_error);
     }
 
     void unsubscribe_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -280,7 +312,12 @@ namespace raven
         DLOG_F(INFO, "cfg.id: %d", cfg.id);
         DLOG_IF_F(INFO, cfg.setting_name.has_value(), "cfg.setting_name: %s", cfg.setting_name.value().c_str());
         DLOG_IF_F(INFO, cfg.alias_name.has_value(), "cfg.alias_name: %s", cfg.alias_name.value().c_str());
-        prepare_answer(sock);
+        if (cfg.setting_name.has_value())
+        {
+            config_clients_registry_.at(sock.fileno()).unsubscribe(cfg.id, cfg.setting_name.value());
+            prepare_answer(sock);
+        } else // TODO handle alias case
+            prepare_answer(sock, request_state::internal_error);
     }
 
     std::shared_ptr<uvw::Loop> uv_loop_{uvw::Loop::getDefault()};
