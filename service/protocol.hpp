@@ -154,13 +154,13 @@ namespace raven
   //! SETTING_REMOVE
   struct setting_remove
   {
-    std::uint32_t id;
+    config_id_st id;
     std::string setting_name;
   };
 
   inline void from_json(const raven::json::json &json_data, setting_remove &cfg)
   {
-      cfg.id = json_data.at(config_id_keyword).get<std::uint32_t>();
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::size_t>()};
       cfg.setting_name = json_data.at(setting_name).get<std::string>();
   }
 

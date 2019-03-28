@@ -44,14 +44,14 @@ namespace raven
 
     void subscribe(raven::config_id_st id, const std::string &setting_name)
     {
-        sub_settings_.insert({id.value(), setting_name});
+        sub_settings_.insert({config_ids_.at(id.value()), setting_name});
     }
 
     void unsubscribe(raven::config_id_st id, const std::string &setting_name)
     {
         DLOG_F(INFO, "unsubscribing setting: %s within config id: %d from client: %d", setting_name.c_str(), id.value(),
                static_cast<int>(this->sock_->fileno()));
-        auto range = sub_settings_.equal_range(id.value());
+        auto range = sub_settings_.equal_range(config_ids_.at(id.value()));
         for (auto it = range.first; it != range.second; ++it) {
             if (it->second == setting_name) {
                 sub_settings_.erase(it);
@@ -60,9 +60,9 @@ namespace raven
         }
     }
 
-    bool has_subscribed(raven::config_id_st id, const std::string &setting_name)
+    bool has_subscribed(raven::config_id_st db_id, const std::string &setting_name)
     {
-        auto range = sub_settings_.equal_range(id.value());
+        auto range = sub_settings_.equal_range(db_id.value());
         for (auto it = range.first; it != range.second; ++it) {
             if (it->second == setting_name)
                 return true;
@@ -73,6 +73,11 @@ namespace raven
     client_ptr &get_socket()
     {
         return sock_;
+    }
+
+    raven::config_id_st get_db_id_from(raven::config_id_st id)
+    {
+        return raven::config_id_st{config_ids_.at(id.value())};
     }
 
   private:
