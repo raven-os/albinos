@@ -228,7 +228,7 @@ namespace raven
             for (auto&[key, value] : cfg.settings_to_update.items()) {
 
                 if (client.has_subscribed(db_id, key)) {
-                    const subscribe_event answer{cfg.id,
+                    const subscribe_event answer{client.get_id_from_db(db_id),
                                                  key,
                                                  subscribe_event_type::update_setting};
                     prepare_answer(*client.get_socket(), answer);
@@ -250,7 +250,7 @@ namespace raven
         for (auto &[fileno, client] : config_clients_registry_)
         {
             if (client.has_subscribed(db_id, cfg.setting_name)) {
-                const subscribe_event answer{cfg.id,
+                const subscribe_event answer{client.get_id_from_db(db_id),
                                              cfg.setting_name,
                                              subscribe_event_type::update_setting};
                 prepare_answer(*client.get_socket(), answer);

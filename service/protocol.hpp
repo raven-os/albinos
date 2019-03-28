@@ -221,7 +221,7 @@ namespace raven
   template <typename TSetting>
   void fill_subscription_struct(const raven::json::json &json_data, TSetting &&cfg)
   {
-      cfg.id = config_id_st{json_data.at(config_id_keyword).get<int>()};
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::uint32_t>()};
       if (json_data.count(alias_name) > 0) {
           cfg.alias_name = json_data.at(alias_name).get<std::string>();
       } else if (json_data.count(setting_name) > 0) {
@@ -271,7 +271,7 @@ namespace raven
 
   inline void from_json(const raven::json::json &json_data, subscribe_event &cfg)
   {
-      cfg.id = config_id_st{json_data.at(config_id_keyword).get<int>()};
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::uint32_t>()};
       cfg.setting_name = json_data.at(setting_name).get<std::string>();
       if (json_data.at(sub_event_type) == "UPDATE")
           cfg.type = subscribe_event_type::update_setting;

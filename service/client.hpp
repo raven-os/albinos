@@ -62,6 +62,8 @@ namespace raven
 
     bool has_subscribed(raven::config_id_st db_id, const std::string &setting_name)
     {
+        if (sub_settings_.find(db_id.value()) == sub_settings_.end())
+            return false;
         auto range = sub_settings_.equal_range(db_id.value());
         for (auto it = range.first; it != range.second; ++it) {
             if (it->second == setting_name)
@@ -78,6 +80,11 @@ namespace raven
     raven::config_id_st get_db_id_from(raven::config_id_st id)
     {
         return raven::config_id_st{config_ids_.at(id.value())};
+    }
+
+    raven::config_id_st get_id_from_db(raven::config_id_st db_id)
+    {
+        return raven::config_id_st{reverse_config_ids_.at(db_id.value())};
     }
 
   private:
