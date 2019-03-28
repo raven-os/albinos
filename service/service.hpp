@@ -185,8 +185,10 @@ namespace raven
                   cfg.config_read_only_key.value().value().c_str());
 
         auto answer = db_.config_load(cfg);
-        config_clients_registry_.at(sock.fileno()) += answer.config_id;
-        answer.config_id = config_clients_registry_.at(sock.fileno()).get_last_id();
+        if (answer.request_state == convert_request_state.at(request_state::success)) {
+            config_clients_registry_.at(sock.fileno()) += answer.config_id;
+            answer.config_id = config_clients_registry_.at(sock.fileno()).get_last_id();
+        }
         prepare_answer(sock, answer);
     }
 
