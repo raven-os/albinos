@@ -248,3 +248,35 @@ Albinos::ReturnedValue Albinos::Config::subscribeToSetting(char const *settingNa
   (void)subscription;
   return SUCCESS;
 }
+
+Albinos::ReturnedValue Albinos::Config::getDependencies(Config **deps, size_t *size) const
+{
+  (void)deps;
+  (void)size;
+  return SUCCESS;
+}
+
+Albinos::ReturnedValue Albinos::Config::getLocalSettings(Setting **settings, size_t *size) const
+{
+  (void)settings;
+  (void)size;
+  return SUCCESS;
+}
+
+Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char ***names) const
+{
+  (void)names;
+  return SUCCESS;
+}
+
+Albinos::ReturnedValue Albinos::Config::getLocalAliases(Alias **aliases, size_t *size) const
+{
+  (void)aliases;
+  (void)size;
+  return SUCCESS;
+}
+
+Albinos::ReturnedValue Albinos::Config::deleteConfig() const
+{
+  return SUCCESS;
+}
