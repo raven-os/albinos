@@ -7,13 +7,13 @@ matrix:
     #  apt:
     #    sources:
     #      - ubuntu-toolchain-r-test
-    #    packages:
-    #      - g++-9
-    #      - gcc-9
-    #env:
-    #  - MATRIX_EVAL="CC=gcc-9 && CXX=g++-9"
 
-    # works on Precise and Trusty
+
+
+
+
+
+    
     - os: linux
       addons:
         apt:
@@ -45,7 +45,8 @@ script:
   - make service
   - make service-test
   - cd tests
-  - ./service-test --reporters=xml --out=result.xml
+  - ./service-test --reporters=xml --out=result.xml -s || true
+  - curl https://report.ci/upload.py | python
   - cd ..
   - ./service &
   - SERVICE_PID=$!
@@ -54,8 +55,6 @@ script:
   - kill -9 $SERVICE_PID
   - cd ../
 
-after_script:
-  - cd build/tests && curl -s https://report.ci/upload.py | python - --include='*.xml' --framework=junit
 after_success:
   - wget https://gist.githubusercontent.com/Arignir/d9a8cb72c9a7c95b7981df56a188d5de/raw/3703660d851e81444c2ce26b3d41d98081e2f2c4/discord.sh
   - chmod +x discord.sh
