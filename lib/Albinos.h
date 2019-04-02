@@ -92,9 +92,22 @@ namespace Albinos
 
     ///
     /// \brief unsubscribe
-    /// \param the subscription to unsubscribe from
+    /// \param the subscription to unsubscribe from. Must be successfully initialised with "subscribeToSetting"
     ///
     void unsubscribe(struct Subscription*);
+
+    ///
+    /// \brief be notified when a setting change. Cancel the subscription using "unsubscribe"
+    /// \param the config
+    /// \param 'name' setting you want to watch
+    /// \param 'data' point to userdata, which will be forwarded to the callback
+    /// \param 'onChange' function pointer callback which will be called once for each setting change
+    /// \param 'subscription' in case of success, a new 'struct Subscription' will be written
+    /// \return error code
+    ///
+    /// To stop the subscription, `unsubsribe` must be called.
+    ///
+    enum ReturnedValue subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, struct Subscription **subscription);
 
     ///
     ///
@@ -108,7 +121,7 @@ namespace Albinos
     struct Config;
 
     ///
-    /// \brief Create a config with the given name
+    /// \brief Create a config with the given name. The created struct must be released using "releaseConfig"
     /// \param 'configName' the new config's name
     /// \param 'returnedConfig' if the function succeeds, a pointer is written to a new 'struct Config'
     /// \return error code
@@ -123,7 +136,7 @@ namespace Albinos
     enum ReturnedValue destroyConfig(struct Config const*);
 
     ///
-    /// \brief get config from Key
+    /// \brief get config from a read/write Key. The created struct must be released using "releaseConfig"
     /// \param 'key' the Key of the requested config
     /// \param 'returnedConfig' if the function succeeds, a pointer is written to a new 'struct Config'
     /// \return error code
@@ -131,7 +144,7 @@ namespace Albinos
     enum ReturnedValue getConfig(struct Key key, struct Config **returnedConfig);
 
     ///
-    /// \brief get const config from key
+    /// \brief get const config from a read only key. The created struct must be released using "releaseConfig"
     /// \param 'key' the key of the requested config
     /// \param 'returnedConfig' if the function succeeds, a pointer is written to a new 'struct Config'
     /// \return error code
@@ -139,10 +152,8 @@ namespace Albinos
     enum ReturnedValue getReadOnlyConfig(struct Key key, struct Config const **returnedConfig);
 
     ///
-    /// \brief release the config, freeing the underlying memory
+    /// \brief release the config, freeing the underlying memory. Must be called when config is no longer used.
     /// \param the config to release
-    ///
-    /// Must be called when config is no longer used.
     ///
     void releaseConfig(struct Config const *);
 
@@ -218,7 +229,7 @@ namespace Albinos
     ///
     /// \brief get the ordered list of all dependencies
     /// \param the config
-    /// \param 'deps' contain all dependencies
+    /// \param 'deps' contain all dependencies.  Must be released using "destroyDependenciesArray".
     /// \param 'size' size of the 'deps' array
     /// \return error code
     ///
@@ -234,7 +245,7 @@ namespace Albinos
     ///
     /// \brief get the ordered list of all local settings
     /// \param the config
-    /// \param 'settings' ordered list of all local settings.
+    /// \param 'settings' ordered list of all local settings. Must be released using "destroySettingsArray".
     /// \param 'size' size of the 'settings' array
     /// \return error code
     ///
@@ -248,9 +259,9 @@ namespace Albinos
     void destroySettingsArray(struct Setting *settings, size_t size);
 
     ///
-    /// \brief get the ordered list of all local settings names
+    /// \brief get the ordered list of all local settings names.
     /// \param the config
-    /// \param 'names' ordered list of all local settings names. NULL terminated.
+    /// \param 'names' ordered list of all local settings names. NULL terminated. Must be released using "destroySettingsNamesArray".
     /// \return error code
     ///
     enum ReturnedValue getLocalSettingsNames(struct Config const*, char ***names);
@@ -271,14 +282,14 @@ namespace Albinos
     enum ReturnedValue getLocalAliases(struct Config const*, struct Alias **aliases, size_t *size);
 
     ///
-    /// \brief destroy a aliases array obtained with 'getLocalAliases'
+    /// \brief destroy an aliases array obtained with 'getLocalAliases'
     /// \param 'aliases' array to destroy
     /// \param 'size' size of the 'aliases' array
     ///
     void destroyAliasesArray(struct Alias *aliases, size_t size);
 
     ///
-    /// \brief inherit from another config
+    /// \brief inherit from another config. To remove an included config, use "uninclude"
     /// \param the config to modify
     /// \param 'inheritFrom' the READ_ONLY key of the config to include
     /// \param 'position' the position in the list of dependencies, where 0 is the first to be included. Negative values can be used, and then position will be *size* decreased by value.
@@ -294,19 +305,6 @@ namespace Albinos
     /// \return error code
     ///
     enum ReturnedValue uninclude(struct Config *config, struct Key *otherConfig, int position);
-
-    ///
-    /// \brief be notified when a setting change
-    /// \param the config
-    /// \param 'name' setting you want to watch
-    /// \param 'data' point to userdata, which will be forwarded to the callback
-    /// \param 'onChange' function pointer callback which will be called once for each setting change
-    /// \param 'subscription' in case of success, a new 'struct Subscription' will be written
-    /// \return error code
-    ///
-    /// To stop the subscription, `unsubsribe` must be called.
-    ///
-    enum ReturnedValue subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, struct Subscription **subscription);
 
 #ifdef __cplusplus
   }
