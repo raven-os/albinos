@@ -31,9 +31,11 @@ namespace raven
     client &operator-=(raven::config_id_st id)
     {
         DLOG_F(INFO, "erasing id: %lu from config: %d", id.value(), static_cast<int>(this->sock_->fileno()));
-        auto db_id = config_ids_.at(id.value());
+        if (config_ids_.find(id.value()) != config_ids_.end()) {
+            auto db_id = config_ids_.at(id.value());
+            reverse_config_ids_.erase(db_id);
+        }
         config_ids_.erase(id.value());
-        reverse_config_ids_.erase(db_id);
         return *this;
     }
 
@@ -44,6 +46,7 @@ namespace raven
 
     void subscribe(raven::config_id_st id, const std::string &setting_name)
     {
+        // TODO check if not subscribed
         sub_settings_.insert({config_ids_.at(id.value()), setting_name});
     }
 
@@ -85,6 +88,16 @@ namespace raven
     raven::config_id_st get_id_from_db(raven::config_id_st db_id)
     {
         return raven::config_id_st{reverse_config_ids_.at(db_id.value())};
+    }
+
+    bool has_loaded(raven::config_id_st id)
+    {
+        return config_ids_.find(id.value()) != config_ids_.end();
+    }
+
+    bool has_loaded_db_id(raven::config_id_st db_id)
+    {
+        return reverse_config_ids_.find(db_id.value()) != reverse_config_ids_.end();
     }
 
   private:
