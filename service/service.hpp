@@ -225,7 +225,7 @@ namespace raven
         prepare_answer(sock, state);
         if (state != request_state::success)
             return ;
-        // TODO : lookup de la db pour associer l'id temporaire du client qui a update a uvrai di dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
+        // TODO : lookup de la db pour associer l'id temporaire du client qui a update au vrai id dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
         // Workaround : get db_id from the client class
         auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
         for (auto &[fileno, client] : config_clients_registry_)
@@ -249,18 +249,20 @@ namespace raven
         DLOG_F(INFO, "cfg.id: %d", cfg.id);
         DLOG_F(INFO, "cfg.setting_name: %s", cfg.setting_name.c_str());
         prepare_answer(sock);
-        // TODO : lookup de la db pour associer l'id temporaire du client qui a update a uvrai di dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
+        // TODO : lookup de la db pour associer l'id temporaire du client qui a update au vrai id dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
         // Workaround : get db_id from the client class
-        /*auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+        if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id))
+            return ;
+        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
         for (auto &[fileno, client] : config_clients_registry_)
         {
             if (client.has_subscribed(db_id, cfg.setting_name)) {
                 const subscribe_event answer{client.get_id_from_db(db_id),
                                              cfg.setting_name,
-                                             subscribe_event_type::update_setting};
+                                             subscribe_event_type::delete_setting};
                 prepare_answer(*client.get_socket(), answer);
             }
-        }*/
+        }
     }
 
     void get_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -815,9 +817,80 @@ namespace raven
     TEST_CASE_CLASS ("setting_unsubscribe request")
     {
         SUBCASE("without alias") {
-            auto data = R"({"REQUEST_NAME": "UNSUBSCRIBE_SETTING","CONFIG_ID": 43,"SETTING_NAME": "foobar"})"_json;
-            auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
-            test_client_server_communication(std::move(data), std::move(answer));
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create(
+                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
+            auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+            request_load["CONFIG_KEY"] = answer_create.config_key.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+                CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+
+            client->once<uvw::ConnectEvent>([&request_load](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+                    CHECK(handle.writable());
+                    CHECK(handle.readable());
+                auto request_str = request_load.dump();
+                handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                handle.read();
+            });
+
+            client->on<uvw::DataEvent>(
+                [&expected_answer](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                    static int step = 0;
+                    static std::uint32_t config_id = 0;
+                    std::string_view data_str(data.data.get(), data.length);
+                    std::cout << "\n\n===\n\n" << data_str << "\n\n===\n" << std::endl;
+                    std::istringstream json_stream;
+                    json_stream.str(std::string(data_str));
+                    nlohmann::json json_data;
+                    json_stream >> json_data;
+                    //auto json_data = json::json::parse(data_str);
+                    auto json_data_str = json_data.dump();
+                    switch (step)
+                    {
+                        case 0:// load config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "SUBSCRIBE_SETTING","CONFIG_ID": 42,"SETTING_NAME": "titi"})"_json;
+                            config_id = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            request["CONFIG_ID"] = config_id;
+                            auto request_str = request.dump();
+                            //expected answer unchanged.
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 1: // subscribe setting
+                        {
+                                CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                      expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "SETTING_REMOVE","CONFIG_ID": 42,"SETTING_NAME": "titi"})"_json;
+                            request["CONFIG_ID"] = config_id;
+                            auto request_str = request.dump();
+                            //expected answer unchanged.
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 2: // delete setting and response from the subscribe event
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto expected = R"({"CONFIG_ID": 42, "SETTING_NAME": "titi", "SUBSCRIPTION_EVENT_TYPE" : "DELETE"})"_json;
+                            expected["CONFIG_ID"] = config_id;
+                            CHECK_FALSE(json_stream.eof());
+                            json_stream >> json_data;
+                            CHECK(json_data == expected);
+                            sock.close();
+                            break;
+                    }
+                    step += 1;
+                });
+
+            client->connect(service_.socket_path_.string());
+            test_run_and_clean_client(service_, loop);
         }
 
         /*SUBCASE("with alias") {
