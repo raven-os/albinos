@@ -208,6 +208,33 @@ namespace raven
         return request_state::success;
     }
 
+    setting_get_answer setting_get(const setting_get& data, raven::config_id_st db_id) noexcept
+    {
+        setting_get_answer answer;
+        try {
+            auto functor_receive_data = [&data, &answer, this](const std::string json_text) {
+                auto json_data = json::json::parse(json_text);
+                answer.setting_value = json_data["SETTINGS"].at(data.setting_name);
+            };
+            execute_statement(select_config_from_id_statement, db_id.value()) >> functor_receive_data;
+            DLOG_F(INFO, "get setting %s with value %s from db", data.setting_name.c_str(), answer.setting_value.c_str());
+            answer.request_state = convert_request_state.at(request_state::success);
+        }
+        catch (const nlohmann::json::out_of_range &error) {
+            DLOG_F(ERROR, "error: %s, trying to find setting: %s", error.what(), data.setting_name.c_str());
+            answer.request_state = convert_request_state.at(request_state::unknown_setting);
+        }
+        catch (const sqlite::sqlite_exception &error) {
+            DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
+            answer.request_state = convert_request_state.at(request_state::db_error);
+        }
+        catch (const std::exception &error) {
+            DLOG_F(ERROR, "%s", error.what());
+            answer.request_state = convert_request_state.at(request_state::db_error);
+        }
+        return answer;
+    }
+
     config_include_answer_db config_include(const config_include& config_include_data) noexcept
     {
         //TODO: Communication.md has changed, need to be modified
