@@ -54,6 +54,7 @@ namespace raven
   inline constexpr const char settings_to_update_keyword[] = "SETTINGS_TO_UPDATE";
   //inline constexpr const char setting_value[] = "SETTING_VALUE";
   inline constexpr const char alias_name[] = "ALIAS_NAME";
+  inline constexpr const char sub_event_type[] = "SUBSCRIBE_EVENT_TYPE";
 
   //! CONFIG_CREATE
   struct config_create
@@ -153,13 +154,13 @@ namespace raven
   //! SETTING_REMOVE
   struct setting_remove
   {
-    std::uint32_t id;
+    config_id_st id;
     std::string setting_name;
   };
 
   inline void from_json(const raven::json::json &json_data, setting_remove &cfg)
   {
-      cfg.id = json_data.at(config_id_keyword).get<std::uint32_t>();
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::size_t>()};
       cfg.setting_name = json_data.at(setting_name).get<std::string>();
   }
 
@@ -220,7 +221,7 @@ namespace raven
   template <typename TSetting>
   void fill_subscription_struct(const raven::json::json &json_data, TSetting &&cfg)
   {
-      cfg.id = json_data.at(config_id_keyword).get<std::uint32_t>();
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::uint32_t>()};
       if (json_data.count(alias_name) > 0) {
           cfg.alias_name = json_data.at(alias_name).get<std::string>();
       } else if (json_data.count(setting_name) > 0) {
@@ -231,7 +232,7 @@ namespace raven
   //! SUBSCRIBE_SETTING
   struct setting_subscribe
   {
-    std::uint32_t id;
+    config_id_st id;
     std::optional<std::string> setting_name{std::nullopt};
     std::optional<std::string> alias_name{std::nullopt};
   };
@@ -244,7 +245,7 @@ namespace raven
   //! UNSUBSCRIBE_SETTING
   struct setting_unsubscribe
   {
-    std::uint32_t id;
+    config_id_st id;
     std::optional<std::string> setting_name{std::nullopt};
     std::optional<std::string> alias_name{std::nullopt};
   };
@@ -252,5 +253,39 @@ namespace raven
   inline void from_json(const raven::json::json &json_data, setting_unsubscribe &cfg)
   {
       fill_subscription_struct<setting_unsubscribe>(json_data, std::forward<setting_unsubscribe>(cfg));
+  }
+
+  enum class subscribe_event_type : short
+  {
+    update_setting,
+    delete_setting
+  };
+
+  //! SUBSCRIBE_EVENT
+  struct subscribe_event
+  {
+    config_id_st id;
+    std::string setting_name;
+    subscribe_event_type type;
+  };
+
+  inline void from_json(const raven::json::json &json_data, subscribe_event &cfg)
+  {
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::uint32_t>()};
+      cfg.setting_name = json_data.at(setting_name).get<std::string>();
+      if (json_data.at(sub_event_type) == "UPDATE")
+          cfg.type = subscribe_event_type::update_setting;
+      else
+          cfg.type = subscribe_event_type::delete_setting;
+  }
+
+  void to_json(raven::json::json &json_data, const subscribe_event &cfg)
+  {
+      std::string type = "DELETE";
+      if (cfg.type == subscribe_event_type::update_setting)
+          type = "UPDATE";
+      json_data = {{"CONFIG_ID", cfg.id.value()},
+                   {"SETTING_NAME", cfg.setting_name},
+                   {"SUBSCRIPTION_EVENT_TYPE", type}};
   }
 }
