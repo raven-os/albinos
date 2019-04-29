@@ -219,13 +219,17 @@ namespace raven
         auto cfg = fill_request<setting_update>(json_data);
         DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "settings_to_update: %s", cfg.settings_to_update.dump().c_str());
-        auto state = db_.settings_update(cfg);
+        if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id)) {
+            prepare_answer(sock, request_state::unknown_id);
+            return ;
+        }
+        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+        auto state = db_.settings_update(cfg, db_id);
         prepare_answer(sock, state);
         if (state != request_state::success)
             return ;
         // TODO : lookup de la db pour associer l'id temporaire du client qui a update au vrai id dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
         // Workaround : get db_id from the client class
-        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
         for (auto &[fileno, client] : config_clients_registry_)
         {
             for (auto&[key, value] : cfg.settings_to_update.items()) {
