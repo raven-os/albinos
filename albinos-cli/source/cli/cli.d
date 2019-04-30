@@ -3,7 +3,7 @@ module cli.cli;
 import core.exception : AssertError;
 import std.stdio;
 import std.string;
-import std.socket : SocketOSException;
+import std.socket;
 import std.getopt;
 import std.uni : isWhite;
 import std.process : executeShell;
@@ -26,6 +26,94 @@ class CLI
             writeln(stderr, e.msg);
             is_running_ = false;
         }
+    }
+
+    private void check(string[] args)
+    {
+        client_.socket.setOption(SocketOptionLevel.SOCKET,
+                                 SocketOption.RCVTIMEO, dur!"seconds"(1));   
+        auto answer = new ubyte[256];
+        client_.socket.receive(answer);
+        client_.socket.setOption(SocketOptionLevel.SOCKET,
+                                 SocketOption.RCVTIMEO, dur!"seconds"(0));
+        (cast(string) answer).writeln;
+    }
+
+    private setting_unsubscribe_answer unsubscribe_setting(string[] args)
+    in(args !is null, "args cannot be null")
+    in(args.length == 3, "need 2 arguments")
+    {
+        size_t config_id;
+        string setting_name;
+        getopt(args, "id", &config_id, "setting_name", &setting_name);
+        auto cfg = deserialize_to!setting_unsubscribe("../API_doc/json_recipes/setting_unsubscribe.json");
+        cfg.config_id = config_id;
+        cfg.setting_name = setting_name;
+        client_.socket.send(cfg.serializeToJson);
+        auto answer = new ubyte[256];
+        client_.socket.receive(answer);
+        (cast(string) answer).writeln;
+        return (cast(string) answer).deserialize!setting_unsubscribe_answer;
+    }
+
+    private setting_subscribe_answer subscribe_setting(string[] args)
+    in(args !is null, "args cannot be null")
+    in(args.length == 3, "need 2 arguments")
+    {
+        size_t config_id;
+        string setting_name;
+        getopt(args, "id", &config_id, "setting_name", &setting_name);
+        auto cfg = deserialize_to!setting_subscribe("../API_doc/json_recipes/setting_subscribe.json");
+        cfg.config_id = config_id;
+        cfg.setting_name = setting_name;
+        client_.socket.send(cfg.serializeToJson);
+        auto answer = new ubyte[256];
+        client_.socket.receive(answer);
+        (cast(string) answer).writeln;
+        return (cast(string) answer).deserialize!setting_subscribe_answer;
+    }
+
+    private setting_update_answer update_setting(string[] args)
+    in(args !is null, "args cannot be null")
+    in(args.length == 4, "need 3 arguments")
+    {
+        size_t config_id;
+        string setting_name;
+        string setting_value;
+        getopt(args, "id", &config_id, 
+                     "setting_name", &setting_name, 
+                     "setting_value", &setting_value);
+        setting_update cfg;
+        cfg.request_name = "SETTING_UPDATE";
+        //auto cfg = deserialize_to!setting_update("../API_doc/json_recipes/setting_update.json");
+        cfg.config_id = config_id;
+        cfg.settings_to_update = format("{\"%s\":\"%s\"}", setting_name.strip("\""), setting_value.strip("\""));
+        string cfg_str = format("{\"REQUEST_NAME\":\"SETTING_UPDATE\",\"CONFIG_ID\":%d,\"SETTINGS_TO_UPDATE\":%s}",
+                                cfg.config_id, cfg.settings_to_update);
+        //client_.socket.send(cfg.serializeToJson);
+        client_.socket.send(cfg_str);
+        auto answer = new ubyte[256];
+        client_.socket.receive(answer);
+        (cast(string) answer).writeln;
+        return (cast(string) answer).deserialize!setting_update_answer;
+    }
+
+    private setting_get_answer get_setting(string[] args)
+    in(args !is null, "args cannot be null")
+    in(args.length == 3, "need 2 arguments")
+    {
+        size_t config_id;
+        string setting_name;
+        getopt(args, "id", &config_id, 
+                     "setting_name", &setting_name);
+        auto cfg = deserialize_to!setting_get("../API_doc/json_recipes/setting_get.json");
+        cfg.config_id = config_id;
+        cfg.setting_name = setting_name;
+        client_.socket.send(cfg.serializeToJson);
+        auto answer = new ubyte[256];
+        client_.socket.receive(answer);
+        (cast(string) answer).writeln;
+        return (cast(string) answer).deserialize!setting_get_answer;
     }
 
     private config_load_answer load_config(string[] args)
@@ -118,6 +206,21 @@ class CLI
                     break;
                 case "load_config":
                     this.load_config(splited_line);
+                    break;
+                case "setting_get":
+                    this.get_setting(splited_line);
+                    break;
+                case "setting_update":
+                    this.update_setting(splited_line);
+                    break;
+                case "setting_subscribe":
+                    this.subscribe_setting(splited_line);
+                    break;
+                case "setting_unsubscribe":
+                    this.unsubscribe_setting(splited_line);
+                    break;
+                case "check":
+                    this.check(splited_line);
                     break;
                 default:
                     line.dup.executeShell.output.write;
