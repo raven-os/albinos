@@ -185,12 +185,35 @@ namespace raven
         DLOG_IF_F(INFO, cfg.config_read_only_key.has_value(), "cfg.config_read_only_key: %s",
                   cfg.config_read_only_key.value().value().c_str());
 
-        auto answer = db_.config_load(cfg);
-        if (answer.request_state == convert_request_state.at(request_state::success)) {
-            config_clients_registry_.at(sock.fileno()) += answer.config_id;
-            answer.config_id = config_clients_registry_.at(sock.fileno()).get_last_id();
+        config_id_st id;
+        if (cfg.config_key) {
+            id = db_.get_config_id(cfg.config_key.value());
+        } else if (cfg.config_read_only_key) {
+            id = db_.get_config_id(cfg.config_read_only_key.value());
+        } else {
+            prepare_answer(sock, request_state::unknown_request);
+            return ;
         }
-        prepare_answer(sock, answer);
+        if (db_.fail()) {
+            if (db_.get_state() == db_state::unknow_config_key) {
+                prepare_answer(sock, request_state::unknown_key);
+                return ;
+            }
+            prepare_answer(sock, request_state::db_error);
+            return ;
+        }
+
+        std::string name = db_.get_config_name(id);
+        if (db_.fail()) {
+            prepare_answer(sock, request_state::db_error);
+            return ;
+        }
+
+        config_clients_registry_.at(sock.fileno()) += id;
+        // TODO get permision for the key and store it with the id
+        // TODO add ref_counting
+        // TODO get full config in cache
+        prepare_answer(sock, config_load_answer{name, id, convert_request_state.at(request_state::success)});
     }
 
     void unload_config(json::json &json_data, uvw::PipeHandle &sock)

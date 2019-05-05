@@ -24,13 +24,19 @@ namespace raven
       R"(create unique index if not exists config_readonly_config_key_uindex on config (readonly_config_key);)"};
   inline constexpr const db_statement_st insert_config_create_statement{
       R"(insert into config (config_text, config_key, readonly_config_key) VALUES (?, ?, ?);)"};
+  inline constexpr const db_statement_st select_config_name_statement{
+      R"(select config_text from config where id = ?;)"};
   inline constexpr const db_statement_st select_keys_config_create_statement{
       R"(select config_key,readonly_config_key from config where id = ? ;)"};
   inline constexpr const db_statement_st select_config_from_key_statement{
+      R"(select id from config where config_key = ? or readonly_config_key = ?;)"};
+  inline constexpr const db_statement_st select_config_from_readwrite_key_statement{
       R"(select config_text,id from config where config_key = ?;)"};
   inline constexpr const db_statement_st select_config_from_readonly_key_statement{
       R"(select config_text,id from config where readonly_config_key = ?;)"};
   inline constexpr const db_statement_st select_count_key_statement{
+      R"(select count(*) FROM config where config_key = ? or readonly_config_key = ?;)"};
+  inline constexpr const db_statement_st select_count_readwrite_key_statement{
       R"(select count(*) FROM config where config_key = ?;)"};
   inline constexpr const db_statement_st select_count_readonly_key_statement{
       R"(select count(*) FROM config where readonly_config_key = ?;)"};
@@ -46,6 +52,8 @@ namespace raven
   enum class db_state : short
   {
     good,
+    unknow_config_key,
+    unknow_config_id,
     sql_error,
     fatal_error,
   };
@@ -94,7 +102,7 @@ namespace raven
          *
          * Return the resulting config ID as well as the config key and read-only config key
          *
-         * In case an error should occur, the state will be set accordingly (`sql_error`, `fatal_error`)
+         * In case an error occur, the state will be set accordingly (`sql_error`, `fatal_error`)
          *
          */
 
@@ -146,46 +154,86 @@ namespace raven
         return {config_key, readonly_config_key, config_id};
     }
 
-    config_load_answer config_load(const config_load &config_load_data) noexcept
+    std::string get_config_name(config_id_st config_id)
     {
-        LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
-        config_load_answer db_answer{"", config_id_st{}, convert_request_state.at(request_state::success)};
+        /*
+         * Get the corresponding name to the config id passed as parameter
+         *
+         * In case an error occur, the state will be set accordingly (`unknow_config_id`, `sql_error`, `fatal_error`)
+         *
+         */
+
+        std::string config_name;
+        auto functor_receive_data = [&config_name](const std::string json_text) {
+            auto json_data = json::json::parse(json_text);
+            config_name = json_data.at(config_name_keyword).get<std::string>();
+        };
         try {
-            auto functor_receive_data = [&db_answer](const std::string json_text, int id) {
-                auto json_data = json::json::parse(json_text);
-                db_answer.config_id = config_id_st{static_cast<std::size_t>(id)};
-                db_answer.config_name = json_data.at(config_name_keyword).get<std::string>();
-            };
             int nb_count = 0;
             execute_statement(select_count_config_element_statement) >> nb_count;
             if (!nb_count)
                 throw sqlite::errors::empty(0, select_count_config_element_statement.value());
-            if (config_load_data.config_key) {
-                throw_misuse_if_count_return_zero_for_this_statement(select_count_key_statement,
-                                                                     config_load_data.config_key.value().value());
-                execute_statement(select_config_from_key_statement,
-                                  config_load_data.config_key.value().value()) >> functor_receive_data;
-            } else if (config_load_data.config_read_only_key) {
-                throw_misuse_if_count_return_zero_for_this_statement(select_count_readonly_key_statement,
-                                                                     config_load_data.config_read_only_key.value().value());
-                execute_statement(select_config_from_readonly_key_statement,
-                                  config_load_data.config_read_only_key.value().value()) >> functor_receive_data;
-            }
+            throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement, config_id.value());
+            execute_statement(select_config_name_statement, config_id.value()) >> functor_receive_data;
+        }
+        catch (const sqlite::errors::empty &error) {
+            DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
+            state = db_state::sql_error;
         }
         catch (const sqlite::errors::misuse &error) {
             DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
-            db_answer.request_state = convert_request_state.at(request_state::unknown_key);
+            state = db_state::unknow_config_id;
         }
         catch (const sqlite::sqlite_exception &error) {
             DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
-            db_answer.request_state = convert_request_state.at(request_state::db_error);
+            state = db_state::sql_error;
         }
         catch (const std::exception &error) {
             DLOG_F(ERROR, "%s", error.what());
-            db_answer.request_state = convert_request_state.at(request_state::db_error);
+            state = db_state::fatal_error;
         }
-        return db_answer;
+        return std::move(config_name);
     }
+
+    config_id_st get_config_id(const config_key_st &config_key) noexcept
+    {
+        /*
+         * Get the corresponding config_id to the key passed as parameter
+         *
+         * In case an error occur, the state will be set accordingly (`unknow_config_key`, `sql_error`, `fatal_error`)
+         *
+         */
+
+        config_id_st config_id;
+        auto functor_receive_data = [&config_id](int id) { config_id = config_id_st{static_cast<std::size_t>(id)}; };
+        try {
+            int nb_count = 0;
+            execute_statement(select_count_config_element_statement) >> nb_count;
+            if (!nb_count)
+                throw sqlite::errors::empty(0, select_count_config_element_statement.value());
+            throw_misuse_if_count_return_zero_for_this_statement(select_count_key_statement, config_key.value(), config_key.value());
+            execute_statement(select_config_from_key_statement, config_key.value(), config_key.value()) >> functor_receive_data;
+        }
+        catch (const sqlite::errors::empty &error) {
+            DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
+            state = db_state::sql_error;
+        }
+        catch (const sqlite::errors::misuse &error) {
+            DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
+            state = db_state::unknow_config_key;
+        }
+        catch (const sqlite::sqlite_exception &error) {
+            DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
+            state = db_state::sql_error;
+        }
+        catch (const std::exception &error) {
+            DLOG_F(ERROR, "%s", error.what());
+            state = db_state::fatal_error;
+        }
+        return config_id;
+    }
+
+    // TODO get permission from id
 
     request_state settings_update(const setting_update &setting_update_data, raven::config_id_st db_id)
     {
@@ -289,24 +337,33 @@ namespace raven
         return answer;
     }
 
+
     bool good() const noexcept { return state == db_state::good; }
+    /*
+     *  Return True if the last operation succeeded
+     */
 
     bool fail() const noexcept { return !good(); }
+     /*
+     *  Return False if the last operation succeeded
+     */
 
     db_state get_state() const noexcept { return state; }
+     /*
+     *  Return the state after the last operation
+     */
 
   private:
-    template <typename Value>
-    void throw_misuse_if_count_return_zero_for_this_statement(const db_statement_st &statement, Value value_statement)
+    template <typename ... Args>
+    void throw_misuse_if_count_return_zero_for_this_statement(const db_statement_st &statement, Args &&...args)
     {
         int nb_count = 0;
-        execute_statement(statement, value_statement) >> nb_count;
+        execute_statement(statement, args...) >> nb_count;
         if (!nb_count)
             throw sqlite::errors::misuse(0, statement.value());
     }
 
 
-  private:
     sqlite::database database_;
     unsigned int nb_tries_{0};
     unsigned int maximum_retries_{4};
@@ -333,25 +390,47 @@ namespace raven
         std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
     }
 
-    TEST_CASE_CLASS ("config load db")
+    TEST_CASE_CLASS ("get config id")
     {
         SUBCASE("normal case key not readonly") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
             auto config_create_answer = db.config_create("ma_config");
-            struct config_load data{config_create_answer.config_key};
-            auto res = db.config_load(data);
-            CHECK_EQ(res.config_name, "ma_config");
-            CHECK_EQ(res.config_id.value(), config_id_st{1}.value());
+            auto id = db.get_config_id(config_create_answer.config_key);
+            CHECK_EQ(id.value(), config_create_answer.config_id.value());
             std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
         }
         SUBCASE("normal case key readonly") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
             auto config_create_answer = db.config_create("ma_config_readonly");
-            struct config_load data;
-            data.config_read_only_key = config_create_answer.readonly_config_key;
-            auto res = db.config_load(data);
-            CHECK_EQ(res.config_name, "ma_config_readonly");
-            CHECK_EQ(res.config_id.value(), config_id_st{1}.value());
+            auto id = db.get_config_id(config_create_answer.readonly_config_key);
+            CHECK_EQ(id.value(), config_create_answer.config_id.value());
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+        SUBCASE("unknow key") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            auto config_create_answer = db.config_create("ma_config_readonly");
+            auto id = db.get_config_id(config_key_st{"lalakey"});
+            CHECK_FALSE(db.good());
+            CHECK_EQ(db.get_state(), db_state::unknow_config_key);
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+    }
+
+    TEST_CASE_CLASS ("get config name")
+    {
+        SUBCASE("normal case get config name") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            auto config_create_answer = db.config_create("ma_config");
+            auto name = db.get_config_name(config_create_answer.config_id);
+            CHECK_EQ(name, "ma_config");
+            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
+        }
+        SUBCASE("unknow id") {
+            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
+            auto config_create_answer = db.config_create("ma_config_readonly");
+            auto name = db.get_config_name(config_id_st{43});
+            CHECK_FALSE(db.good());
+            CHECK_EQ(db.get_state(), db_state::unknow_config_id);
             std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
         }
     }
