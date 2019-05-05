@@ -65,12 +65,6 @@ namespace raven
     config_id_st config_id;
   };
 
-  struct config_include_answer_db
-  {
-    request_state state;
-    std::size_t nb_configs;
-  };
-
   class config_db
   {
   public:
