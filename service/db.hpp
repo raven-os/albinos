@@ -42,12 +42,19 @@ namespace raven
   inline constexpr const db_statement_st update_config_text_from_id_statement{
       R"(UPDATE config set config_text = ? where id = ?;)"};
 
-  struct config_create_answer_db
+  // maybe do fieldbits in the future, but seems sufficient for now
+  enum class db_state : short
+  {
+    good,
+    sql_error,
+    fatal_error,
+  };
+
+  struct config_create_result
   {
     config_key_st config_key;
     config_key_st readonly_config_key;
     config_id_st config_id;
-    std::optional<request_state> state_error;
   };
 
   struct config_include_answer_db
@@ -80,57 +87,63 @@ namespace raven
         }
     }
 
-    config_create_answer_db config_create(const json::json &config_create_data) noexcept
+    config_create_result config_create(const std::string &name) noexcept
     {
+        /*
+         * Create a config with the name passed as parameter
+         *
+         * Return the resulting config ID as well as the config key and read-only config key
+         *
+         * In case an error should occur, the state will be set accordingly (`sql_error`, `fatal_error`)
+         *
+         */
+
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         using namespace std::string_literals;
         config_key_st config_key;
         config_key_st readonly_config_key;
-        config_id_st request_state_value;
-        std::optional<request_state> state_error = std::nullopt;
+        config_id_st config_id;
         for (nb_tries_ = 0; nb_tries_ < maximum_retries_; ++nb_tries_) {
             try {
                 json::json data_to_bind;
-                data_to_bind[config_name_keyword] = config_create_data[config_name_keyword];
+                data_to_bind[config_name_keyword] = name;
                 data_to_bind["SETTINGS"] = json::json::object();
-                data_to_bind["OTHER_CONFIG"] = json::json::array();
+                data_to_bind["INCLUDES"] = json::json::array();
+                DLOG_F(INFO, "attempt nb: %i", nb_tries_);
                 DLOG_F(INFO, "json to insert in db: %s", data_to_bind.dump().c_str());
                 auto data_to_bind_str = data_to_bind.dump();
                 execute_statement(insert_config_create_statement,
                                   data_to_bind_str, (random_string() +
-                                                     std::to_string(std::hash<std::string>()(
-                                                         config_create_data[config_name_keyword]))),
-                                  (random_string() + std::to_string(std::hash<std::string>()
-                                                                        (config_create_data[config_name_keyword]))));
-
+                                                     std::to_string(std::hash<std::string>()(name))),
+                                  (random_string() + std::to_string(std::hash<std::string>()(name))));
                 execute_statement(select_keys_config_create_statement, database_.last_insert_rowid())
                     >> [&](std::string config_key_, std::string readonly_config_key_) {
                         config_key = config_key_st{config_key_};
                         readonly_config_key = config_key_st{readonly_config_key_};
                     };
                 //success;
-                request_state_value = config_id_st{static_cast<std::size_t>(database_.last_insert_rowid())};
-                state_error = std::nullopt;
+                config_id = config_id_st{static_cast<std::size_t>(database_.last_insert_rowid())};
+                state = db_state::good;
                 break;
             }
             catch (const sqlite::errors::constraint_unique &error) {
                 DLOG_F(ERROR, "%s, from sql -> %s", error.what(), error.get_sql().c_str());
-                state_error = request_state::db_error;
+                state = db_state::sql_error;
                 /* error constraint violated, we retry with a new random_string() */
             }
             catch (const sqlite::sqlite_exception &error) {
                 DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
-                state_error = request_state::db_error;
+                state = db_state::sql_error;
                 /* this is another error from database, we retry with a new random_string() */
             }
             catch (const std::exception &error) {
                 DLOG_F(ERROR, "error: %s", error.what());
-                state_error = request_state::db_error;
+                state = db_state::fatal_error;
                 /* this error seem's fatal, we break */
                 break;
             }
         }
-        return {config_key, readonly_config_key, request_state_value, state_error};
+        return {config_key, readonly_config_key, config_id};
     }
 
     config_load_answer config_load(const config_load &config_load_data) noexcept
@@ -276,6 +289,12 @@ namespace raven
         return answer;
     }
 
+    bool good() const noexcept { return state == db_state::good; }
+
+    bool fail() const noexcept { return !good(); }
+
+    db_state get_state() const noexcept { return state; }
+
   private:
     template <typename Value>
     void throw_misuse_if_count_return_zero_for_this_statement(const db_statement_st &statement, Value value_statement)
@@ -286,23 +305,27 @@ namespace raven
             throw sqlite::errors::misuse(0, statement.value());
     }
 
+
+  private:
+    sqlite::database database_;
+    unsigned int nb_tries_{0};
+    unsigned int maximum_retries_{4};
+    db_state state{db_state::good};
+
 #ifdef DOCTEST_LIBRARY_INCLUDED
     TEST_CASE_CLASS ("config_create db")
     {
         config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
         SUBCASE("normal case") {
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-            CHECK_EQ(db.config_create(config_create).config_id.value(), 1u);
-
-            config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_de_ouf"})"_json;
-            CHECK_EQ(db.config_create(config_create).config_id.value(), 2u);
+            CHECK_EQ(db.config_create("ma_config").config_id.value(), 1u);
+            CHECK_FALSE(db.fail());
+            CHECK_EQ(db.config_create("ma_config_de_ouf").config_id.value(), 2u);
+            CHECK_FALSE(db.fail());
         }
         SUBCASE("unique constraints violation") {
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_foo"})"_json;
             for (int i = 0; i < 100; ++i) {
-                WARN_NE(db.config_create(config_create).config_id.value(),
-                    static_cast<int>(request_state::db_error));
-                /*if (db.config_create(config_create).config_id.value() == static_cast<int>(request_state::db_error)) {
+                WARN_NE(db.config_create("ma_config_qui_marche_pas").config_id.value(), -1);
+                /*if (db.config_create(config_create).config_id.value() == -1) {
                     break;
                 }*/
             }
@@ -314,8 +337,7 @@ namespace raven
     {
         SUBCASE("normal case key not readonly") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-            auto config_create_answer = db.config_create(config_create);
+            auto config_create_answer = db.config_create("ma_config");
             struct config_load data{config_create_answer.config_key};
             auto res = db.config_load(data);
             CHECK_EQ(res.config_name, "ma_config");
@@ -324,8 +346,7 @@ namespace raven
         }
         SUBCASE("normal case key readonly") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_readonly"})"_json;
-            auto config_create_answer = db.config_create(config_create);
+            auto config_create_answer = db.config_create("ma_config_readonly");
             struct config_load data;
             data.config_read_only_key = config_create_answer.readonly_config_key;
             auto res = db.config_load(data);
@@ -347,8 +368,7 @@ namespace raven
 
         SUBCASE("normal update setting") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-            auto config_create_answer = db.config_create(config_create);
+            auto config_create_answer = db.config_create("ma_config");
             setting_update setting_update_data{config_create_answer.config_id, {{"foo", "bar"}}};
             CHECK_EQ(static_cast<short>(db.settings_update(setting_update_data, config_create_answer.config_id)),
                 static_cast<short>(request_state::success));
@@ -357,8 +377,7 @@ namespace raven
 
         SUBCASE("normal update multiple settings") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-            auto config_create_answer = db.config_create(config_create);
+            auto config_create_answer = db.config_create("ma_config");
             setting_update setting_update_data{config_create_answer.config_id, {{"foo", "bar"}, {"titi", 1}}};
             CHECK_EQ(static_cast<short>(db.settings_update(setting_update_data, config_create_answer.config_id)),
                 static_cast<short>(request_state::success));
@@ -369,8 +388,7 @@ namespace raven
     TEST_CASE_CLASS("config include db") {
         SUBCASE("include into nonexistent  destination") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-            auto config_create_answer = db.config_create(config_create);
+            auto config_create_answer = db.config_create("ma_config");
             struct config_include config_include_data{config_id_st{42}, config_create_answer.config_id};
             CHECK_EQ(static_cast<short>(db.config_include(config_include_data).state),
                 static_cast<short>(request_state::unknown_id));
@@ -379,8 +397,7 @@ namespace raven
 
         SUBCASE("include from nonexistent src") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-            auto config_create_answer = db.config_create(config_create);
+            auto config_create_answer = db.config_create("ma_config");
             struct config_include config_include_data{config_create_answer.config_id, config_id_st{42}};
             CHECK_EQ(static_cast<short>(db.config_include(config_include_data).state),
                 static_cast<short>(request_state::unknown_id));
@@ -389,10 +406,8 @@ namespace raven
 
         SUBCASE("include unique config into existent src") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-            json::json config_create_second = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json;
-            auto config_create_answer = db.config_create(config_create);
-            auto config_create_answer_second = db.config_create(config_create_second);
+            auto config_create_answer = db.config_create("ma_config");
+            auto config_create_answer_second = db.config_create("ma_config_second");
             struct config_include config_include_data{config_create_answer.config_id,
                 config_create_answer_second.config_id};
             auto answer = db.config_include(config_include_data);
@@ -403,12 +418,9 @@ namespace raven
 
         SUBCASE("include multiple config into existent src") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-            json::json config_create_second = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json;
-            json::json config_create_third = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_third"})"_json;
-            auto config_create_answer = db.config_create(config_create);
-            auto config_create_answer_second = db.config_create(config_create_second);
-            auto config_create_answer_third = db.config_create(config_create_third);
+            auto config_create_answer = db.config_create("ma_config");
+            auto config_create_answer_second = db.config_create("ma_config_second");
+            auto config_create_answer_third = db.config_create("ma_config_third");
             struct config_include config_include_data{config_create_answer.config_id,
                                                       config_create_answer_second.config_id};
             db.config_include(config_include_data);
@@ -421,12 +433,9 @@ namespace raven
 
         SUBCASE("include multiple config with same id into existent src") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            json::json config_create = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json;
-            json::json config_create_second = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json;
-            json::json config_create_third = R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_third"})"_json;
-            auto config_create_answer = db.config_create(config_create);
-            auto config_create_answer_second = db.config_create(config_create_second);
-            auto config_create_answer_third = db.config_create(config_create_third);
+            auto config_create_answer = db.config_create("ma_config");
+            auto config_create_answer_second = db.config_create("ma_config_second");
+            auto config_create_answer_third = db.config_create("ma_config_third");
             struct config_include config_include_data{config_create_answer.config_id,
                                                       config_create_answer_second.config_id};
             db.config_include(config_include_data);
@@ -440,10 +449,5 @@ namespace raven
     }
 
 #endif
-
-  private:
-    sqlite::database database_;
-    unsigned int nb_tries_{0};
-    unsigned int maximum_retries_{4};
   };
 }

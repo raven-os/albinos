@@ -164,15 +164,15 @@ namespace raven
     void create_config(json::json &json_data, uvw::PipeHandle &sock)
     {
         auto cfg = fill_request<config_create>(json_data);
-        auto config_create_db_result = db_.config_create(json_data);
-        if (!config_create_db_result.state_error.has_value()) {
+        auto config_create_db_result = db_.config_create(json_data[config_name_keyword]);
+        if (db_.good()) {
             const config_create_answer answer{config_create_db_result.config_key,
                                               config_create_db_result.readonly_config_key,
                                               convert_request_state.at(request_state::success)};
             prepare_answer(sock, answer);
         } else {
             const config_create_answer answer{config_key_st{""}, config_key_st{""},
-                                              convert_request_state.at(config_create_db_result.state_error.value())};
+                                              convert_request_state.at(request_state::db_error)};
             prepare_answer(sock, answer);
         }
     }
@@ -501,8 +501,7 @@ namespace raven
         SUBCASE ("read only key unknown") {
             using namespace std::string_literals;
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_to_load_lol"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config_to_load");
             auto request = R"({"REQUEST_NAME": "CONFIG_LOAD","READONLY_CONFIG_KEY": "unknown_readonly_config_key"})"_json;
             auto expected_answer = R"({"CONFIG_NAME":"","CONFIG_ID":0,"REQUEST_STATE":"UNKNOWN_KEY"})"_json;
             CHECK_FALSE(service_.create_socket());
@@ -515,11 +514,10 @@ namespace raven
         SUBCASE ("load_config request with known readonly_config_key") {
             using namespace std::string_literals;
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_to_load"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config_to_load_ro");
             auto request = R"({"REQUEST_NAME": "CONFIG_LOAD","READONLY_CONFIG_KEY": "42Key"})"_json;
             request["READONLY_CONFIG_KEY"] = answer_create.readonly_config_key.value();
-            auto expected_answer = R"({"CONFIG_NAME":"ma_config_to_load","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
+            auto expected_answer = R"({"CONFIG_NAME":"ma_config_to_load_ro","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
             expected_answer["CONFIG_ID"] = answer_create.config_id.value();
             CHECK_FALSE(service_.create_socket());
             auto loop = uvw::Loop::getDefault();
@@ -531,11 +529,10 @@ namespace raven
         SUBCASE ("load_config request with known config_key") {
             using namespace std::string_literals;
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_to_load_regular"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config_to_load_rw");
             auto request = R"({"REQUEST_NAME": "CONFIG_LOAD","CONFIG_KEY": "42Key"})"_json;
             request["CONFIG_KEY"] = answer_create.config_key.value();
-            auto expected_answer = R"({"CONFIG_NAME":"ma_config_to_load_regular","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
+            auto expected_answer = R"({"CONFIG_NAME":"ma_config_to_load_rw","CONFIG_ID":42,"REQUEST_STATE":"SUCCESS"})"_json;
             expected_answer["CONFIG_ID"] = answer_create.config_id.value();
             CHECK_FALSE(service_.create_socket());
             auto loop = uvw::Loop::getDefault();
@@ -562,10 +559,8 @@ namespace raven
         SUBCASE("include into nonexistent config") {
             using namespace std::string_literals;
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
-            auto answer_second = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto answer_second = service_.db_.config_create("ma_config_second");
             auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42, "SRC": 31})"_json;
             request["SRC"] = answer_second.config_id.value();
             auto expected_answer = R"({"REQUEST_STATE":"UNKNOWN_ID"})"_json;
@@ -579,10 +574,8 @@ namespace raven
         SUBCASE("include from nonexistent config") {
             using namespace std::string_literals;
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
-            auto answer_second = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto answer_second = service_.db_.config_create("ma_config_second");
             auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42, "SRC": 31})"_json;
             request["CONFIG_ID"] = answer_create.config_id.value();
             auto expected_answer = R"({"REQUEST_STATE":"UNKNOWN_ID"})"_json;
@@ -596,10 +589,8 @@ namespace raven
         SUBCASE("include from nonexistent config") {
             using namespace std::string_literals;
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
-            auto answer_second = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config_second"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto answer_second = service_.db_.config_create("ma_config_second");
             auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42, "SRC": 31})"_json;
             request["CONFIG_ID"] = answer_create.config_id.value();
             request["SRC"] = answer_second.config_id.value();
@@ -652,8 +643,7 @@ namespace raven
         SUBCASE ("update_setting with valid id") {
             using namespace std::string_literals;
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config");
             auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
             request_load["CONFIG_KEY"] = answer_create.config_key.value();
             auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
@@ -720,8 +710,7 @@ namespace raven
 
         SUBCASE("get unknow setting") {
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config");
             auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
             request_load["CONFIG_KEY"] = answer_create.config_key.value();
             auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
@@ -772,8 +761,7 @@ namespace raven
 
         SUBCASE("get_setting with valid request") {
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config");
             auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
             request_load["CONFIG_KEY"] = answer_create.config_key.value();
             auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
@@ -855,8 +843,7 @@ namespace raven
         SUBCASE("with existing setting") {
             using namespace std::string_literals;
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config");
             auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
             request_load["CONFIG_KEY"] = answer_create.config_key.value();
             auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
@@ -940,8 +927,7 @@ namespace raven
         SUBCASE("without alias") {
             using namespace std::string_literals;
             service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
-            auto answer_create = service_.db_.config_create(
-                R"({"REQUEST_NAME": "CONFIG_CREATE","CONFIG_NAME": "ma_config"})"_json);
+            auto answer_create = service_.db_.config_create("ma_config");
             auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
             request_load["CONFIG_KEY"] = answer_create.config_key.value();
             auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
