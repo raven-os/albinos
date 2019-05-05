@@ -316,7 +316,7 @@ namespace raven
     void throw_misuse_if_count_return_zero_for_this_statement(const db_statement_st &statement, Args &&...args)
     {
         int nb_count = 0;
-        execute_statement(statement, args...) >> nb_count;
+        execute_statement(statement, std::forward<Args>(args)...) >> nb_count;
         if (!nb_count)
             throw sqlite::errors::misuse(0, statement.value());
     }
