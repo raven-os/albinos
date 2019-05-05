@@ -75,7 +75,7 @@ namespace raven
         return (database_ << statement.value() << ... << args);
     }
 
-    explicit config_db(std::filesystem::path path_to_db) noexcept : database_{path_to_db.string()}
+    explicit config_db(const std::filesystem::path &path_to_db) noexcept : database_{path_to_db.string()}
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         try {
@@ -105,7 +105,7 @@ namespace raven
         config_key_st config_key;
         config_key_st readonly_config_key;
         config_id_st config_id;
-        for (nb_tries_ = 0; nb_tries_ < maximum_retries_; ++nb_tries_) {
+        for (unsigned int nb_tries_ = 0; nb_tries_ < maximum_retries_; ++nb_tries_) {
             try {
                 json::json data_to_bind;
                 data_to_bind[config_name_keyword] = name;
@@ -323,8 +323,7 @@ namespace raven
 
 
     sqlite::database database_;
-    unsigned int nb_tries_{0};
-    unsigned int maximum_retries_{4};
+    static constexpr const unsigned int maximum_retries_{4};
     db_state state{db_state::good};
 
 #ifdef DOCTEST_LIBRARY_INCLUDED

@@ -21,24 +21,21 @@ namespace raven
   class service
   {
   public:
-    explicit service(std::filesystem::path db_path = std::filesystem::current_path() / "albinos_service.db") noexcept : db_{
-        db_path}
+    explicit service(std::filesystem::path db_path = std::filesystem::current_path() / "albinos_service.db") noexcept
+    : db_{std::move(db_path)}
     {
         VLOG_SCOPE_F(loguru::Verbosity_INFO, "service constructor");
-        DVLOG_F(loguru::Verbosity_INFO, "register error_event libuv listener: %s",
-                "<uvw::ErrorEvent>([this](auto const &error_event, auto &)");
+        DVLOG_F(loguru::Verbosity_INFO, "register error_event libuv listener");
         server_->on<uvw::ErrorEvent>([this](auto const &error_event, auto &) {
             LOG_SCOPE_F(ERROR, __PRETTY_FUNCTION__);
             DVLOG_F(loguru::Verbosity_ERROR, "%s", error_event.what());
             this->error_occurred = true;
         });
-        DVLOG_F(loguru::Verbosity_INFO, "register listen_event libuv listener: %s",
-                "<uvw::ListenEvent>([this](uvw::ListenEvent const &, uvw::PipeHandle &handle)");
+        DVLOG_F(loguru::Verbosity_INFO, "register listen_event libuv listener");
         server_->on<uvw::ListenEvent>([this](uvw::ListenEvent const &, uvw::PipeHandle &handle) {
             LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
             std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
-            DVLOG_F(loguru::Verbosity_INFO, "register close_event libuv listener: %s",
-                    "<uvw::CloseEvent>([this](uvw::CloseEvent const &, uvw::PipeHandle &handle)");
+            DVLOG_F(loguru::Verbosity_INFO, "register close_event libuv listener");
             socket->on<uvw::CloseEvent>([this](uvw::CloseEvent const &, uvw::PipeHandle &handle) {
                 LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
                 DVLOG_F(loguru::Verbosity_INFO, "socket closed.");
@@ -48,8 +45,7 @@ namespace raven
 #endif
             });
 
-            DVLOG_F(loguru::Verbosity_INFO, "register end_event libuv listener: %s",
-                    "<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock)");
+            DVLOG_F(loguru::Verbosity_INFO, "register end_event libuv listener");
             socket->on<uvw::EndEvent>([this](const uvw::EndEvent &, uvw::PipeHandle &sock) {
                 LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
                 DVLOG_F(loguru::Verbosity_INFO, "closing socket: %d", static_cast<int>(sock.fileno()));
@@ -60,17 +56,16 @@ namespace raven
                 sock.close();
             });
 
-            DVLOG_F(loguru::Verbosity_INFO, "register data_event libuv listener: %s",
-                    "<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock)");
+            DVLOG_F(loguru::Verbosity_INFO, "register data_event libuv listener");
             socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
                 LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
                 std::string_view data_str(data.data.get(), data.length);
                 try {
                     auto json_data = json::json::parse(data_str);
-                    std::string command_order = json_data.at(raven::request_keyword).get<std::string>();
+                    auto command_order = json_data.at(raven::request_keyword).get<std::string>();
                     order_registry.at(command_order)(json_data, sock);
                 }
-                catch (const std::exception &error) { // change to out of range
+                catch (const std::out_of_range &error) {
                     DVLOG_F(loguru::Verbosity_ERROR, "error in received data: %s", error.what());
                     json::json unknown_request_data = R"(
                                                           {"REQUEST_STATE": "UNKNOWN_REQUEST"}
@@ -78,10 +73,18 @@ namespace raven
                     sock.write(unknown_request_data.dump().data(),
                                static_cast<unsigned int>(unknown_request_data.dump().size()));
                 }
+                catch (const std::exception &error) {
+                    DVLOG_F(loguru::Verbosity_ERROR, "error in received data: %s", error.what());
+                    json::json internal_error_request_data = R"(
+                                                          {"REQUEST_STATE": "INTERNAL_ERROR"}
+                                                        )"_json;
+                    sock.write(internal_error_request_data.dump().data(),
+                               static_cast<unsigned int>(internal_error_request_data.dump().size()));
+                }
             });
 
             handle.accept(*socket);
-            config_clients_registry_.emplace(std::make_pair(socket->fileno(), raven::client(socket)));
+            config_clients_registry_.emplace(socket->fileno(), raven::client(socket));
             socket->read();
         });
     }
@@ -122,37 +125,37 @@ namespace raven
         std::string socket = socket_path_.string();
         DVLOG_F(loguru::Verbosity_INFO, "binding to socket: %s", socket.c_str());
         server_->bind(socket);
-        DLOG_IF_F(ERROR, this->error_occurred, "an error occured during the bind");
+        DLOG_IF_F(ERROR, this->error_occurred, "an error occurred during the bind");
         if (this->error_occurred) return this->error_occurred;
         server_->listen();
-        DLOG_IF_F(ERROR, this->error_occurred, "an error occured during the listen");
+        DLOG_IF_F(ERROR, this->error_occurred, "an error occurred during the listen");
         return this->error_occurred;
     }
 
     //! Helpers
-    void send_answer(json::json &response_json_data, uvw::PipeHandle &sock) noexcept
+    static void send_json_answer(json::json &response_json_data, uvw::PipeHandle &sock) noexcept
     {
         auto response_str = response_json_data.dump();
         sock.write(response_str.data(), static_cast<unsigned int>(response_str.size()));
     }
 
     template <typename ProtocolType>
-    void prepare_answer(uvw::PipeHandle &sock, const ProtocolType &answer) noexcept
+    static void send_answer(uvw::PipeHandle &sock, const ProtocolType &answer) noexcept
     {
         json::json response_json_data;
         to_json(response_json_data, answer);
-        send_answer(response_json_data, sock);
+        send_json_answer(response_json_data, sock);
     }
 
-    void prepare_answer(uvw::PipeHandle &sock, request_state state = request_state::success) noexcept
+    static void send_answer(uvw::PipeHandle &sock, request_state state = request_state::success) noexcept
     {
         json::json response_json_data;
         response_json_data[request_state_keyword] = convert_request_state.at(state);
-        send_answer(response_json_data, sock);
+        send_json_answer(response_json_data, sock);
     }
 
     template <typename Request>
-    Request fill_request(json::json &json_data)
+    static Request fill_request(json::json &json_data)
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         Request request;
@@ -169,11 +172,11 @@ namespace raven
             const config_create_answer answer{config_create_db_result.config_key,
                                               config_create_db_result.readonly_config_key,
                                               convert_request_state.at(request_state::success)};
-            prepare_answer(sock, answer);
+            send_answer(sock, answer);
         } else {
-            const config_create_answer answer{config_key_st{""}, config_key_st{""},
+            const config_create_answer answer{config_key_st{}, config_key_st{},
                                               convert_request_state.at(request_state::db_error)};
-            prepare_answer(sock, answer);
+            send_answer(sock, answer);
         }
     }
 
@@ -191,29 +194,29 @@ namespace raven
         } else if (cfg.config_read_only_key) {
             id = db_.get_config_id(cfg.config_read_only_key.value());
         } else {
-            prepare_answer(sock, request_state::unknown_request);
+            send_answer(sock, request_state::unknown_request);
             return ;
         }
         if (db_.fail()) {
             if (db_.get_state() == db_state::unknow_config_key) {
-                prepare_answer(sock, request_state::unknown_key);
+                send_answer(sock, request_state::unknown_key);
                 return ;
             }
-            prepare_answer(sock, request_state::db_error);
+            send_answer(sock, request_state::db_error);
             return ;
         }
 
         std::string name = db_.get_config_name(id);
         if (db_.fail()) {
-            prepare_answer(sock, request_state::db_error);
+            send_answer(sock, request_state::db_error);
             return ;
         }
 
-        config_clients_registry_.at(sock.fileno()) += id;
+        config_id_st temp_id = config_clients_registry_.at(sock.fileno()).insert_db_id(id);
         // TODO get permision for the key and store it with the id
         // TODO add ref_counting
         // TODO get full config in cache
-        prepare_answer(sock, config_load_answer{name, id, convert_request_state.at(request_state::success)});
+        send_answer(sock, config_load_answer{name, temp_id, convert_request_state.at(request_state::success)});
     }
 
     void unload_config(json::json &json_data, uvw::PipeHandle &sock)
@@ -221,8 +224,8 @@ namespace raven
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<config_unload>(json_data);
         auto &config_ids = config_clients_registry_.at(sock.fileno());
-        config_ids -= cfg.id;
-        prepare_answer(sock);
+        config_ids.remove_temp_id(cfg.id);
+        send_answer(sock);
     }
 
     void include_config(json::json &json_data, uvw::PipeHandle &sock)
@@ -234,22 +237,22 @@ namespace raven
         DLOG_F(INFO, "cfg.src_id: %lu", cfg.src_id.value());
 
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(raven::config_id_st{cfg.id})) {
-            prepare_answer(sock, request_state::unknown_id);
+            send_answer(sock, request_state::unknown_id);
             return ;
         }
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(raven::config_id_st{cfg.src_id})) {
-            prepare_answer(sock, request_state::unknown_id);
+            send_answer(sock, request_state::unknown_id);
             return ;
         }
         config_id_st db_id_to_include = config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id});
 
         auto config_json_data = db_.get_config(config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id}));
         if (db_.fail()) {
-            prepare_answer(sock, request_state::db_error);
+            send_answer(sock, request_state::db_error);
             return ;
         }
         config_json_data["INCLUDES"].push_back(db_id_to_include.value());
-        prepare_answer(sock, request_state::success);
+        send_answer(sock, request_state::success);
     }
 
     void update_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -259,7 +262,7 @@ namespace raven
         DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "settings_to_update: %s", cfg.settings_to_update.dump().c_str());
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id)) {
-            prepare_answer(sock, request_state::unknown_id);
+            send_answer(sock, request_state::unknown_id);
             return;
         }
 
@@ -267,7 +270,7 @@ namespace raven
 
         auto config_json_data = db_.get_config(db_id);
         if (db_.fail()) {
-            prepare_answer(sock, request_state::db_error);
+            send_answer(sock, request_state::db_error);
             return ;
         }
 
@@ -277,22 +280,22 @@ namespace raven
         DLOG_F(INFO, "config after update: %s", config_json_data.dump().c_str());
         db_.update_config(config_json_data, db_id);
         if (db_.fail()) {
-            prepare_answer(sock, request_state::db_error);
+            send_answer(sock, request_state::db_error);
             return ;
         }
 
-        prepare_answer(sock, request_state::success);
+        send_answer(sock, request_state::success);
         // TODO : lookup de la db pour associer l'id temporaire du client qui a update au vrai id dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
         // Workaround : get db_id from the client class
         for (auto &[fileno, client] : config_clients_registry_)
         {
             for (auto&[key, value] : cfg.settings_to_update.items()) {
 
-                if (client.has_subscribed(db_id, key)) {
+                if (client.is_subscribed(db_id, key)) {
                     const subscribe_event answer{client.get_id_from_db(db_id),
                                                  key,
                                                  subscribe_event_type::update_setting};
-                    prepare_answer(*client.get_socket(), answer);
+                    send_answer(*client.get_socket(), answer);
                 }
             }
         }
@@ -304,7 +307,7 @@ namespace raven
         auto cfg = fill_request<setting_remove>(json_data);
         DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "cfg.setting_name: %s", cfg.setting_name.c_str());
-        prepare_answer(sock);
+        send_answer(sock);
         // TODO : lookup de la db pour associer l'id temporaire du client qui a update au vrai id dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
         // Workaround : get db_id from the client class
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id))
@@ -312,11 +315,11 @@ namespace raven
         auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
         for (auto &[fileno, client] : config_clients_registry_)
         {
-            if (client.has_subscribed(db_id, cfg.setting_name)) {
+            if (client.is_subscribed(db_id, cfg.setting_name)) {
                 const subscribe_event answer{client.get_id_from_db(db_id),
                                              cfg.setting_name,
                                              subscribe_event_type::delete_setting};
-                prepare_answer(*client.get_socket(), answer);
+                send_answer(*client.get_socket(), answer);
             }
         }
     }
@@ -328,12 +331,12 @@ namespace raven
         DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "cfg.setting_name: %s", cfg.setting_name.c_str());
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(raven::config_id_st{cfg.id})) {
-            prepare_answer(sock, request_state::unknown_id);
+            send_answer(sock, request_state::unknown_id);
             return ;
         }
         auto config_json_data = db_.get_config(config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id}));
         if (db_.fail()) {
-            prepare_answer(sock, request_state::db_error);
+            send_answer(sock, request_state::db_error);
             return ;
         }
         setting_get_answer answer;
@@ -341,11 +344,11 @@ namespace raven
             answer.setting_value = config_json_data["SETTINGS"].at(cfg.setting_name);
         }
         catch (const json::json::out_of_range &error) {
-            prepare_answer(sock, request_state::unknown_setting);
+            send_answer(sock, request_state::unknown_setting);
             return ;
         }
         answer.request_state = convert_request_state.at(request_state::success);
-        prepare_answer(sock, answer);
+        send_answer(sock, answer);
     }
 
     void set_alias(json::json &json_data, uvw::PipeHandle &sock)
@@ -355,7 +358,7 @@ namespace raven
         DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "cfg.alias_name: %s", cfg.alias_name.c_str());
         DLOG_F(INFO, "cfg.setting_name: %s", cfg.setting_name.c_str());
-        prepare_answer(sock);
+        send_answer(sock);
     }
 
     void unset_alias(json::json &json_data, uvw::PipeHandle &sock)
@@ -364,7 +367,7 @@ namespace raven
         auto cfg = fill_request<alias_unset>(json_data);
         DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "cfg.alias_name: %s", cfg.alias_name.c_str());
-        prepare_answer(sock);
+        send_answer(sock);
     }
 
     void subscribe_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -375,7 +378,7 @@ namespace raven
         DLOG_IF_F(INFO, cfg.setting_name.has_value(), "cfg.setting_name: %s", cfg.setting_name.value().c_str());
         DLOG_IF_F(INFO, cfg.alias_name.has_value(), "cfg.alias_name: %s", cfg.alias_name.value().c_str());
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id)) {
-            prepare_answer(sock, request_state::unknown_id);
+            send_answer(sock, request_state::unknown_id);
             return ;
         }
         if (cfg.setting_name.has_value())
@@ -383,11 +386,11 @@ namespace raven
             config_clients_registry_.at(sock.fileno()).subscribe(cfg.id, cfg.setting_name.value());
             // TODO
             // if setting doesn't exist in config
-            //      prepare_answer(sock, request_state::unknown_setting);
+            //      send_answer(sock, request_state::unknown_setting);
             // else
-            prepare_answer(sock);
+            send_answer(sock);
         } else // TODO handle alias case
-            prepare_answer(sock, request_state::internal_error);
+            send_answer(sock, request_state::internal_error);
     }
 
     void unsubscribe_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -398,15 +401,15 @@ namespace raven
         DLOG_IF_F(INFO, cfg.setting_name.has_value(), "cfg.setting_name: %s", cfg.setting_name.value().c_str());
         DLOG_IF_F(INFO, cfg.alias_name.has_value(), "cfg.alias_name: %s", cfg.alias_name.value().c_str());
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id)) {
-            prepare_answer(sock, request_state::unknown_id);
+            send_answer(sock, request_state::unknown_id);
             return ;
         }
         if (cfg.setting_name.has_value())
         {
             config_clients_registry_.at(sock.fileno()).unsubscribe(cfg.id, cfg.setting_name.value());
-            prepare_answer(sock);
+            send_answer(sock);
         } else // TODO handle alias case
-            prepare_answer(sock, request_state::internal_error);
+            send_answer(sock, request_state::internal_error);
     }
 
     std::shared_ptr<uvw::Loop> uv_loop_{uvw::Loop::getDefault()};
