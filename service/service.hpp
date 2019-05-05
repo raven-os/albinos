@@ -70,7 +70,7 @@ namespace raven
                     std::string command_order = json_data.at(raven::request_keyword).get<std::string>();
                     order_registry.at(command_order)(json_data, sock);
                 }
-                catch (const std::exception &error) {
+                catch (const std::exception &error) { // change to out of range
                     DVLOG_F(loguru::Verbosity_ERROR, "error in received data: %s", error.what());
                     json::json unknown_request_data = R"(
                                                           {"REQUEST_STATE": "UNKNOWN_REQUEST"}
@@ -244,13 +244,28 @@ namespace raven
         DLOG_F(INFO, "settings_to_update: %s", cfg.settings_to_update.dump().c_str());
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id)) {
             prepare_answer(sock, request_state::unknown_id);
+            return;
+        }
+
+        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+
+        auto config_json_data = db_.get_config(db_id);
+        if (db_.fail()) {
+            prepare_answer(sock, request_state::db_error);
             return ;
         }
-        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
-        auto state = db_.settings_update(cfg, db_id);
-        prepare_answer(sock, state);
-        if (state != request_state::success)
+
+        for (auto &[key, value] : cfg.settings_to_update.items()) {
+            config_json_data["SETTINGS"][key] = value;
+        }
+        DLOG_F(INFO, "config after update: %s", config_json_data.dump().c_str());
+        db_.update_config(config_json_data, db_id);
+        if (db_.fail()) {
+            prepare_answer(sock, request_state::db_error);
             return ;
+        }
+
+        prepare_answer(sock, request_state::success);
         // TODO : lookup de la db pour associer l'id temporaire du client qui a update au vrai id dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
         // Workaround : get db_id from the client class
         for (auto &[fileno, client] : config_clients_registry_)
@@ -683,8 +698,9 @@ namespace raven
             });
 
             client->on<uvw::DataEvent>(
-                [&expected_answer](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                [&expected_answer, &service_](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
                     static int step = 0;
+                    static size_t id = 0;
                     std::string_view data_str(data.data.get(), data.length);
                     auto json_data = json::json::parse(data_str);
                     auto json_data_str = json_data.dump();
@@ -694,8 +710,9 @@ namespace raven
                         {
                             CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
                                   expected_answer.at("REQUEST_STATE").get<std::string>());
-                            auto request = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTINGS_TO_UPDATE": {"foo": "bar","titi": 1}})"_json;
-                            request["CONFIG_ID"] = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            auto request = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTINGS_TO_UPDATE": {"foo": "bar"}})"_json;
+                            id = json_data.at("CONFIG_ID").get<std::size_t>();
+                            request["CONFIG_ID"] = id;
                             auto request_str = request.dump();
                             //expected answer unchanged.
                             sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
@@ -705,6 +722,71 @@ namespace raven
                         case 1: // update setting
                             CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
                                   expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto config_json_data = service_.db_.get_config(config_id_st{id});
+                            auto setting = config_json_data["SETTINGS"].find("foo");
+                            CHECK_NE(setting, config_json_data["SETTINGS"].end());
+                            CHECK_EQ(setting.value(), "bar");
+                            sock.close();
+                            break;
+                    }
+                    step += 1;
+                });
+
+            client->connect(service_.socket_path_.string());
+            test_run_and_clean_client(service_, loop);
+        };
+
+        SUBCASE ("update_setting with valid id and multiple settings") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+            request_load["CONFIG_KEY"] = answer_create.config_key.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+
+            client->once<uvw::ConnectEvent>([&request_load](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+                    CHECK(handle.writable());
+                    CHECK(handle.readable());
+                auto request_str = request_load.dump();
+                handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                handle.read();
+            });
+
+            client->on<uvw::DataEvent>(
+                [&expected_answer, &service_](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                    static int step = 0;
+                    static size_t id = 0;
+                    std::string_view data_str(data.data.get(), data.length);
+                    auto json_data = json::json::parse(data_str);
+                    auto json_data_str = json_data.dump();
+                    switch (step)
+                    {
+                        case 0:// load config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTINGS_TO_UPDATE": {"foo": "bar","titi": "1"}})"_json;
+                            id = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            //expected answer unchanged.
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 1: // update setting
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto config_json_data = service_.db_.get_config(config_id_st{id});
+                            auto setting = config_json_data["SETTINGS"].find("foo");
+                            CHECK_NE(setting, config_json_data["SETTINGS"].end());
+                            CHECK_EQ(setting.value(), "bar");
+                            setting = config_json_data["SETTINGS"].find("titi");
+                            CHECK_NE(setting, config_json_data["SETTINGS"].end());
+                            CHECK_EQ(setting.value(), "1");
                             sock.close();
                             break;
                     }
@@ -752,6 +834,7 @@ namespace raven
             client->on<uvw::DataEvent>(
                 [&expected_answer](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
                     static int step = 0;
+                    static size_t id = 0;
                     std::string_view data_str(data.data.get(), data.length);
                     auto json_data = json::json::parse(data_str);
                     auto json_data_str = json_data.dump();
@@ -762,7 +845,8 @@ namespace raven
                             CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
                                       expected_answer.at("REQUEST_STATE").get<std::string>());
                             auto request = R"({"REQUEST_NAME": "SETTING_GET","CONFIG_ID": 42,"SETTING_NAME": "titi"})"_json;
-                            request["CONFIG_ID"] = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            id = json_data.at("CONFIG_ID").get<std::size_t>();
+                            request["CONFIG_ID"] = id;
                             auto request_str = request.dump();
                             expected_answer["REQUEST_STATE"] = "UNKNOWN_SETTING";
                             sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));

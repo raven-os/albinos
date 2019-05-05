@@ -163,6 +163,7 @@ namespace raven
          *
          */
 
+        LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         std::string config_name;
         auto functor_receive_data = [&config_name](const std::string json_text) {
             auto json_data = json::json::parse(json_text);
@@ -204,6 +205,7 @@ namespace raven
          *
          */
 
+        LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         config_id_st config_id;
         auto functor_receive_data = [&config_id](int id) { config_id = config_id_st{static_cast<std::size_t>(id)}; };
         try {
@@ -235,38 +237,66 @@ namespace raven
 
     // TODO get permission from id
 
-    request_state settings_update(const setting_update &setting_update_data, raven::config_id_st db_id)
+    json::json get_config(config_id_st id) noexcept
     {
+        /*
+         * Get the corresponding config in json format to the id passed as parameter
+         *
+         * In case an error occur, the state will be set accordingly (`unknow_config_id`, `sql_error`, `fatal_error`)
+         *
+         */
+
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
+        json::json data;
+        auto functor_receive_data = [&data, id, this](const std::string json_text) { data = json::json::parse(json_text); };
         try {
-            auto functor_receive_data = [&setting_update_data, db_id, this](const std::string json_text) {
-                auto json_data = json::json::parse(json_text);
-                for (auto&[key, value] : setting_update_data.settings_to_update.items()) {
-                    json_data["SETTINGS"][key] = value;
-                }
-                DLOG_F(INFO, "json after update: %s", json_data.dump().c_str());
-                this->execute_statement(update_config_text_from_id_statement,
-                    json_data.dump().c_str(), db_id.value());
-            };
-            throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement,
-                                                                 db_id.value());
-            execute_statement(select_config_from_id_statement, db_id.value()) >> functor_receive_data;
+            throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement, id.value());
+            execute_statement(select_config_from_id_statement, id.value()) >> functor_receive_data;
+            state = db_state::good;
         }
         catch (const sqlite::errors::misuse &error) {
             DLOG_F(ERROR, "misuse of api or wrong id: %s, from sql: %s -> [with id = %lu]", error.what(),
-                error.get_sql().c_str(),
-                db_id.value());
-            return request_state::unknown_id;
+                   error.get_sql().c_str(), id.value());
+            state = db_state::unknow_config_id;
         }
         catch (const sqlite::sqlite_exception &error) {
             DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
-            return request_state::db_error;
+            state = db_state::sql_error;
         }
         catch (const std::exception &error) {
             DLOG_F(ERROR, "%s", error.what());
-            return request_state::db_error;
+            state = db_state::fatal_error;
         }
-        return request_state::success;
+        return data;
+    }
+
+    void update_config(const json::json &updated_data, config_id_st id) noexcept
+    {
+        /*
+         * Update the config corresponding to the id with the json data passed as parameter
+         *
+         * In case an error occur, the state will be set accordingly (`unknow_config_id`, `sql_error`, `fatal_error`)
+         *
+         */
+        LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
+        try {
+            throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement, id.value());
+            execute_statement(update_config_text_from_id_statement, updated_data.dump().c_str(), id.value());
+            state = db_state::good;
+        }
+        catch (const sqlite::errors::misuse &error) {
+            DLOG_F(ERROR, "misuse of api or wrong id: %s, from sql: %s -> [with id = %lu]", error.what(),
+                   error.get_sql().c_str(), id.value());
+            state = db_state::unknow_config_id;
+        }
+        catch (const sqlite::sqlite_exception &error) {
+            DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
+            state = db_state::sql_error;
+        }
+        catch (const std::exception &error) {
+            DLOG_F(ERROR, "%s", error.what());
+            state = db_state::fatal_error;
+        }
     }
 
     setting_get_answer setting_get(const setting_get& data, raven::config_id_st db_id) noexcept
@@ -336,7 +366,6 @@ namespace raven
         }
         return answer;
     }
-
 
     bool good() const noexcept { return state == db_state::good; }
     /*
@@ -431,35 +460,6 @@ namespace raven
             db.get_config_name(config_id_st{43});
             CHECK_FALSE(db.good());
             CHECK_EQ(db.get_state(), db_state::unknow_config_id);
-            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
-        }
-    }
-
-    TEST_CASE_CLASS ("setting update db")
-    {
-        SUBCASE("setting update unknown id") {
-            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            setting_update setting_update_data{config_id_st{42}, {{"foo", "bar"}}};
-            CHECK_EQ(static_cast<short>(db.settings_update(setting_update_data, raven::config_id_st{42})),
-                static_cast<short>(request_state::unknown_id));
-            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
-        }
-
-        SUBCASE("normal update setting") {
-            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            auto config_create_answer = db.config_create("ma_config");
-            setting_update setting_update_data{config_create_answer.config_id, {{"foo", "bar"}}};
-            CHECK_EQ(static_cast<short>(db.settings_update(setting_update_data, config_create_answer.config_id)),
-                static_cast<short>(request_state::success));
-            std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
-        }
-
-        SUBCASE("normal update multiple settings") {
-            config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
-            auto config_create_answer = db.config_create("ma_config");
-            setting_update setting_update_data{config_create_answer.config_id, {{"foo", "bar"}, {"titi", 1}}};
-            CHECK_EQ(static_cast<short>(db.settings_update(setting_update_data, config_create_answer.config_id)),
-                static_cast<short>(request_state::success));
             std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
         }
     }
