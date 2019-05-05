@@ -198,11 +198,14 @@ namespace raven
             return ;
         }
         if (db_.fail()) {
-            if (db_.get_state() == db_state::unknow_config_key) {
-                send_answer(sock, request_state::unknown_key);
-                return ;
+            switch(db_.get_state()) {
+                case db_state::unknow_config_key:
+                    send_answer(sock, request_state::unknown_key);
+                    break;
+                default:
+                    send_answer(sock, request_state::db_error);
+                    break;
             }
-            send_answer(sock, request_state::db_error);
             return ;
         }
 
@@ -236,14 +239,12 @@ namespace raven
         DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "cfg.src_id: %lu", cfg.src_id.value());
 
-        if (!config_clients_registry_.at(sock.fileno()).has_loaded(raven::config_id_st{cfg.id})) {
+        if (!config_clients_registry_.at(sock.fileno()).has_loaded(raven::config_id_st{cfg.id}) ||
+            !config_clients_registry_.at(sock.fileno()).has_loaded(raven::config_id_st{cfg.src_id})) {
             send_answer(sock, request_state::unknown_id);
             return ;
         }
-        if (!config_clients_registry_.at(sock.fileno()).has_loaded(raven::config_id_st{cfg.src_id})) {
-            send_answer(sock, request_state::unknown_id);
-            return ;
-        }
+        
         config_id_st db_id_to_include = config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id});
 
         auto config_json_data = db_.get_config(config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id}));
