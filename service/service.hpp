@@ -271,7 +271,7 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<setting_remove>(json_data);
-        DLOG_F(INFO, "cfg.id: %d", cfg.id);
+        DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "cfg.setting_name: %s", cfg.setting_name.c_str());
         prepare_answer(sock);
         // TODO : lookup de la db pour associer l'id temporaire du client qui a update au vrai id dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
@@ -294,7 +294,7 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<setting_get>(json_data);
-        DLOG_F(INFO, "cfg.id: %d", cfg.id);
+        DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "cfg.setting_name: %s", cfg.setting_name.c_str());
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(raven::config_id_st{cfg.id})) {
             prepare_answer(sock, request_state::unknown_id);
@@ -308,7 +308,7 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<alias_set>(json_data);
-        DLOG_F(INFO, "cfg.id: %d", cfg.id);
+        DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "cfg.alias_name: %s", cfg.alias_name.c_str());
         DLOG_F(INFO, "cfg.setting_name: %s", cfg.setting_name.c_str());
         prepare_answer(sock);
@@ -318,7 +318,7 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<alias_unset>(json_data);
-        DLOG_F(INFO, "cfg.id: %d", cfg.id);
+        DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_F(INFO, "cfg.alias_name: %s", cfg.alias_name.c_str());
         prepare_answer(sock);
     }
@@ -327,7 +327,7 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<setting_subscribe>(json_data);
-        DLOG_F(INFO, "cfg.id: %d", cfg.id);
+        DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_IF_F(INFO, cfg.setting_name.has_value(), "cfg.setting_name: %s", cfg.setting_name.value().c_str());
         DLOG_IF_F(INFO, cfg.alias_name.has_value(), "cfg.alias_name: %s", cfg.alias_name.value().c_str());
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id)) {
@@ -350,7 +350,7 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<setting_subscribe>(json_data);
-        DLOG_F(INFO, "cfg.id: %d", cfg.id);
+        DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
         DLOG_IF_F(INFO, cfg.setting_name.has_value(), "cfg.setting_name: %s", cfg.setting_name.value().c_str());
         DLOG_IF_F(INFO, cfg.alias_name.has_value(), "cfg.alias_name: %s", cfg.alias_name.value().c_str());
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id)) {

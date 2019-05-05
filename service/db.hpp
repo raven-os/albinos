@@ -409,7 +409,7 @@ namespace raven
         SUBCASE("unknow key") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
             auto config_create_answer = db.config_create("ma_config_readonly");
-            auto id = db.get_config_id(config_key_st{"lalakey"});
+            db.get_config_id(config_key_st{"lalakey"});
             CHECK_FALSE(db.good());
             CHECK_EQ(db.get_state(), db_state::unknow_config_key);
             std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
@@ -428,7 +428,7 @@ namespace raven
         SUBCASE("unknow id") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
             auto config_create_answer = db.config_create("ma_config_readonly");
-            auto name = db.get_config_name(config_id_st{43});
+            db.get_config_name(config_id_st{43});
             CHECK_FALSE(db.good());
             CHECK_EQ(db.get_state(), db_state::unknow_config_id);
             std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");

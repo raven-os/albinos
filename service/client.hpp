@@ -52,7 +52,7 @@ namespace raven
 
     void unsubscribe(raven::config_id_st id, const std::string &setting_name)
     {
-        DLOG_F(INFO, "unsubscribing setting: %s within config id: %d from client: %d", setting_name.c_str(), id.value(),
+        DLOG_F(INFO, "unsubscribing setting: %s within config id: %lu from client: %d", setting_name.c_str(), id.value(),
                static_cast<int>(this->sock_->fileno()));
         auto range = sub_settings_.equal_range(config_ids_.at(id.value()));
         for (auto it = range.first; it != range.second; ++it) {
