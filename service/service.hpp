@@ -21,7 +21,7 @@ namespace raven
   class service
   {
   public:
-    service(std::filesystem::path db_path = std::filesystem::current_path() / "albinos_service.db") noexcept : db_{
+    explicit service(std::filesystem::path db_path = std::filesystem::current_path() / "albinos_service.db") noexcept : db_{
         db_path}
     {
         VLOG_SCOPE_F(loguru::Verbosity_INFO, "service constructor");

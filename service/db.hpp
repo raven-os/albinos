@@ -81,7 +81,7 @@ namespace raven
         return (database_ << statement.value() << ... << args);
     }
 
-    config_db(std::filesystem::path path_to_db) noexcept : database_{path_to_db.string()}
+    explicit config_db(std::filesystem::path path_to_db) noexcept : database_{path_to_db.string()}
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         try {
