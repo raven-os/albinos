@@ -248,7 +248,7 @@ namespace raven
 
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         json::json data;
-        auto functor_receive_data = [&data, id, this](const std::string json_text) { data = json::json::parse(json_text); };
+        auto functor_receive_data = [&data](const std::string &json_text) { data = json::json::parse(json_text); };
         try {
             throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement, id.value());
             execute_statement(select_config_from_id_statement, id.value()) >> functor_receive_data;
