@@ -25,17 +25,17 @@ namespace raven
     : db_{std::move(db_path)}
     {
         VLOG_SCOPE_F(loguru::Verbosity_INFO, "service constructor");
-        DVLOG_F(loguru::Verbosity_INFO, "register error_event libuv listener");
+        DVLOG_F(loguru::Verbosity_INFO, "registering error_event libuv listener");
         server_->on<uvw::ErrorEvent>([this](auto const &error_event, auto &) {
             LOG_SCOPE_F(ERROR, __PRETTY_FUNCTION__);
             DVLOG_F(loguru::Verbosity_ERROR, "%s", error_event.what());
             this->error_occurred = true;
         });
-        DVLOG_F(loguru::Verbosity_INFO, "register listen_event libuv listener");
+        DVLOG_F(loguru::Verbosity_INFO, "registering listen_event libuv listener");
         server_->on<uvw::ListenEvent>([this](uvw::ListenEvent const &, uvw::PipeHandle &handle) {
             LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
             std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
-            DVLOG_F(loguru::Verbosity_INFO, "register close_event libuv listener");
+            DVLOG_F(loguru::Verbosity_INFO, "registering close_event libuv listener");
             socket->on<uvw::CloseEvent>([this](uvw::CloseEvent const &, uvw::PipeHandle &handle) {
                 LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
                 DVLOG_F(loguru::Verbosity_INFO, "socket closed.");
@@ -45,7 +45,7 @@ namespace raven
 #endif
             });
 
-            DVLOG_F(loguru::Verbosity_INFO, "register end_event libuv listener");
+            DVLOG_F(loguru::Verbosity_INFO, "registering end_event libuv listener");
             socket->on<uvw::EndEvent>([this](const uvw::EndEvent &, uvw::PipeHandle &sock) {
                 LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
                 DVLOG_F(loguru::Verbosity_INFO, "closing socket: %d", static_cast<int>(sock.fileno()));
@@ -56,7 +56,7 @@ namespace raven
                 sock.close();
             });
 
-            DVLOG_F(loguru::Verbosity_INFO, "register data_event libuv listener");
+            DVLOG_F(loguru::Verbosity_INFO, "registering data_event libuv listener");
             socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
                 LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
                 std::string_view data_str(data.data.get(), data.length);
