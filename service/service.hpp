@@ -252,7 +252,7 @@ namespace raven
             send_answer(sock, request_state::db_error);
             return ;
         }
-        config_json_data["INCLUDES"].push_back(db_id_to_include.value());
+        config_json_data[config_includes_field_keyword].push_back(db_id_to_include.value());
         send_answer(sock, request_state::success);
     }
 
@@ -276,7 +276,7 @@ namespace raven
         }
 
         for (auto &[key, value] : cfg.settings_to_update.items()) {
-            config_json_data["SETTINGS"][key] = value;
+            config_json_data[config_settings_field_keyword][key] = value;
         }
         DLOG_F(INFO, "config after update: %s", config_json_data.dump().c_str());
         db_.update_config(config_json_data, db_id);
@@ -342,7 +342,7 @@ namespace raven
         }
         setting_get_answer answer;
         try {
-            answer.setting_value = config_json_data["SETTINGS"].at(cfg.setting_name);
+            answer.setting_value = config_json_data[config_settings_field_keyword].at(cfg.setting_name);
         }
         catch (const json::json::out_of_range &error) {
             send_answer(sock, request_state::unknown_setting);

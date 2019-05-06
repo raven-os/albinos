@@ -48,6 +48,10 @@ namespace raven
   inline constexpr const db_statement_st update_config_text_from_id_statement{
       R"(UPDATE config set config_text = ? where id = ?;)"};
 
+  inline constexpr const char config_settings_field_keyword[] = "SETTINGS";
+  inline constexpr const char config_includes_field_keyword[] = "INCLUDES";
+
+
   // maybe do fieldbits in the future, but seems sufficient for now
   enum class db_state : short
   {
@@ -109,8 +113,8 @@ namespace raven
             try {
                 json::json data_to_bind;
                 data_to_bind[config_name_keyword] = name;
-                data_to_bind["SETTINGS"] = json::json::object();
-                data_to_bind["INCLUDES"] = json::json::array();
+                data_to_bind[config_settings_field_keyword] = json::json::object();
+                data_to_bind[config_includes_field_keyword] = json::json::array();
                 DLOG_F(INFO, "attempt nb: %i", nb_tries_);
                 DLOG_F(INFO, "json to insert in db: %s", data_to_bind.dump().c_str());
                 auto data_to_bind_str = data_to_bind.dump();
