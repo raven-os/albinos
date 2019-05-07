@@ -55,7 +55,7 @@ namespace raven
   // maybe do fieldbits in the future, but seems sufficient for now
   enum class db_state : short
   {
-    good,
+    ok = 0,
     unknow_config_key,
     unknow_config_id,
     sql_error,
@@ -115,7 +115,7 @@ namespace raven
                 data_to_bind[config_name_keyword] = name;
                 data_to_bind[config_settings_field_keyword] = json::json::object();
                 data_to_bind[config_includes_field_keyword] = json::json::array();
-                DLOG_F(INFO, "attempt nb: %i", nb_tries_);
+                DLOG_F(INFO, "attempt nb: %u", nb_tries_);
                 DLOG_F(INFO, "json to insert in db: %s", data_to_bind.dump().c_str());
                 auto data_to_bind_str = data_to_bind.dump();
                 execute_statement(insert_config_create_statement,
@@ -123,13 +123,13 @@ namespace raven
                                                      std::to_string(std::hash<std::string>()(name))),
                                   (random_string() + std::to_string(std::hash<std::string>()(name))));
                 execute_statement(select_keys_config_create_statement, database_.last_insert_rowid())
-                    >> [&](std::string config_key_, std::string readonly_config_key_) {
+                    >> [&](const std::string &config_key_, const std::string &readonly_config_key_) {
                         config_key = config_key_st{config_key_};
                         readonly_config_key = config_key_st{readonly_config_key_};
                     };
                 //success;
                 config_id = config_id_st{static_cast<std::size_t>(database_.last_insert_rowid())};
-                state = db_state::good;
+                state = db_state::ok;
                 break;
             }
             catch (const sqlite::errors::constraint_unique &error) {
@@ -174,7 +174,7 @@ namespace raven
                 throw sqlite::errors::empty(0, select_count_config_element_statement.value());
             throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement, config_id.value());
             execute_statement(select_config_name_statement, config_id.value()) >> functor_receive_data;
-            state = db_state::good;
+            state = db_state::ok;
         }
         catch (const sqlite::errors::empty &error) {
             DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
@@ -214,7 +214,7 @@ namespace raven
                 throw sqlite::errors::empty(0, select_count_config_element_statement.value());
             throw_misuse_if_count_return_zero_for_this_statement(select_count_key_statement, config_key.value(), config_key.value());
             execute_statement(select_config_from_key_statement, config_key.value(), config_key.value()) >> functor_receive_data;
-            state = db_state::good;
+            state = db_state::ok;
         }
         catch (const sqlite::errors::empty &error) {
             DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
@@ -252,7 +252,7 @@ namespace raven
         try {
             throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement, id.value());
             execute_statement(select_config_from_id_statement, id.value()) >> functor_receive_data;
-            state = db_state::good;
+            state = db_state::ok;
         }
         catch (const sqlite::errors::misuse &error) {
             DLOG_F(ERROR, "misuse of api or wrong id: %s, from sql: %s -> [with id = %lu]", error.what(),
@@ -282,8 +282,8 @@ namespace raven
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         try {
             throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement, id.value());
-            execute_statement(update_config_text_from_id_statement, updated_data.dump().c_str(), id.value());
-            state = db_state::good;
+            execute_statement(update_config_text_from_id_statement, updated_data.dump(), id.value());
+            state = db_state::ok;
         }
         catch (const sqlite::errors::misuse &error) {
             DLOG_F(ERROR, "misuse of api or wrong id: %s, from sql: %s -> [with id = %lu]", error.what(),
@@ -300,7 +300,7 @@ namespace raven
         }
     }
 
-    bool good() const noexcept { return state == db_state::good; }
+    bool good() const noexcept { return state == db_state::ok; }
     /*
      *  Return True if the last operation succeeded
      */
@@ -328,7 +328,7 @@ namespace raven
 
     sqlite::database database_;
     static constexpr const unsigned int maximum_retries_{4};
-    db_state state{db_state::good};
+    db_state state{db_state::ok};
 
 #ifdef DOCTEST_LIBRARY_INCLUDED
     TEST_CASE_CLASS ("config_create db")
