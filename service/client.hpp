@@ -14,21 +14,21 @@ namespace raven
   private:
     using client_ptr = std::shared_ptr<uvw::PipeHandle>;
   public:
-    client(client_ptr sock) noexcept : sock_(sock)
+    explicit client(client_ptr sock) noexcept : sock_(std::move(sock))
     {
-    };
+    }
 
     client() = delete;
 
-    client &operator+=(raven::config_id_st db_id)
+    config_id_st insert_db_id(raven::config_id_st db_id)
     {
         last_id++;
         config_ids_.insert({{last_id.value(), db_id.value()}});
         reverse_config_ids_.insert({{db_id.value(), last_id.value()}});
-        return *this;
+        return last_id;
     }
 
-    client &operator-=(raven::config_id_st id)
+    void remove_temp_id(raven::config_id_st id)
     {
         DLOG_F(INFO, "erasing id: %lu from config: %d", id.value(), static_cast<int>(this->sock_->fileno()));
         if (config_ids_.find(id.value()) != config_ids_.end()) {
@@ -36,7 +36,6 @@ namespace raven
             reverse_config_ids_.erase(db_id);
         }
         config_ids_.erase(id.value());
-        return *this;
     }
 
     config_id_st get_last_id() const noexcept
@@ -52,7 +51,7 @@ namespace raven
 
     void unsubscribe(raven::config_id_st id, const std::string &setting_name)
     {
-        DLOG_F(INFO, "unsubscribing setting: %s within config id: %d from client: %d", setting_name.c_str(), id.value(),
+        DLOG_F(INFO, "unsubscribing setting: %s within config id: %lu from client: %d", setting_name.c_str(), id.value(),
                static_cast<int>(this->sock_->fileno()));
         auto range = sub_settings_.equal_range(config_ids_.at(id.value()));
         for (auto it = range.first; it != range.second; ++it) {
@@ -63,7 +62,7 @@ namespace raven
         }
     }
 
-    bool has_subscribed(raven::config_id_st db_id, const std::string &setting_name)
+    bool is_subscribed(raven::config_id_st db_id, const std::string &setting_name)
     {
         if (sub_settings_.find(db_id.value()) == sub_settings_.end())
             return false;
