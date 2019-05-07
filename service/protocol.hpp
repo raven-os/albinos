@@ -190,6 +190,55 @@ namespace raven
                    {"REQUEST_STATE", cfg.request_state}};
   }
 
+  //! CONFIG_GET_SETTINGS_NAMES
+  struct config_get_settings_names
+  {
+    config_id_st id;
+  };
+
+  inline void from_json(const raven::json::json &json_data, config_get_settings_names &cfg)
+  {
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::size_t>()};
+  }
+
+  //! CONFIG_GET_SETTINGS_NAMES_ANSwER
+  struct config_get_settings_names_answer
+  {
+    json::json settings_name{json::json::array()};
+    std::string request_state;
+  };
+
+  void to_json(raven::json::json &json_data, const config_get_settings_names_answer &cfg)
+  {
+      json_data = {{"SETTINGS_NAMES", cfg.settings_name},
+                   {"REQUEST_STATE", cfg.request_state}};
+  }
+
+  //! CONFIG_GET_SETTINGS
+  struct config_get_settings
+  {
+    config_id_st id;
+  };
+
+  inline void from_json(const raven::json::json &json_data, config_get_settings &cfg)
+  {
+      cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::size_t>()};
+  }
+
+  //! CONFIG_GET_SETTINGS
+  struct config_get_settings_answer
+  {
+    json::json settings{json::json::object()};
+    std::string request_state;
+  };
+
+  void to_json(raven::json::json &json_data, const config_get_settings_answer &cfg)
+  {
+      json_data = {{"SETTINGS", cfg.settings},
+                   {"REQUEST_STATE", cfg.request_state}};
+  }
+
+
   //! ALIAS_SET
   struct alias_set
   {
