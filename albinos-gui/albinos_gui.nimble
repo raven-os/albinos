@@ -10,5 +10,5 @@ bin           = @["albinos_gui"]
 
 # Dependencies
 
-requires "nim >= 0.19.0"
-requires "nigui >= 0.1.1"
+requires "nim >= 0.19.9"
+requires "gintro#head"

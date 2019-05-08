@@ -1,33 +1,17 @@
-import nigui
+import gintro/[gtk, glib, gobject, gio, gtksource]
+import config/config
 
-##! Require for gtk3
-app.init()
+proc appActivate(app: Application) =
+  var builder = newBuilder()
+  discard addFromFile(builder, "example.glade")
+  let window = getApplicationWindow(builder, "window")
+  window.setApplication(app)
+  showAll(window)
 
-##! Window configuration
-var window = newWindow("Albinos GUI")
-window.width = 420
-window.height = 420
+proc main =
+  loadConfig()
+  let app = newApplication("org.gtk.example")
+  connect(app, "activate", appActivate)
+  discard run(app)
 
-##! Layout
-var container = newLayoutContainer(Layout_Vertical)
-window.add(container)
-
-##! Contents of the layout
-var button = newButton("Button 1")
-container.add(button)
-
-var textArea = newTextArea()
-container.add(textArea)
-
-##! Callback
-button.onClick = proc(event: ClickEvent) =
-
-  textArea.addLine("Button 1 clicked, message box opened.")
-  window.alert("This is a simple message box.")
-  textArea.addLine("Message box closed.")
-
-##! Enable Window
-window.show()
-
-##! Run application
-app.run()
+main()
