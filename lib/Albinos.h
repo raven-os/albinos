@@ -5,6 +5,14 @@
 
 #pragma once
 
+#ifdef C2NIM
+#  dynlib albinosdll
+#  cdecl
+#  if defined(linux)
+#    define albinosdll "libalbinos.so"
+#  endif
+#endif
+
 # include <stddef.h>
 
 #ifdef __cplusplus

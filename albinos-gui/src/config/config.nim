@@ -1,3 +1,4 @@
-# Module config
+import terminal
+
 proc loadConfig*() =
-    echo "\e[1;34mLoading configuration\e[00m"
+    styledEcho(fgCyan, "Loading configuration")
