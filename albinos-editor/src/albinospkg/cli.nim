@@ -59,8 +59,7 @@ proc cliLoop() =
                 clearScreen()
                 continue
             of "config":
-                handleConfigCmd(toOpenArray(args, 0,
-                                                len(args) - 1))
+                handleConfigCmd(toOpenArray(args, 0, len(args) - 1))
             else:
                 echo global_help
 
