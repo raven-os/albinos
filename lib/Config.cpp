@@ -50,25 +50,25 @@ void Albinos::Config::initSocket()
   std::string socketPath = (std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock").string();
 
   socket->on<uvw::ErrorEvent>([](const uvw::ErrorEvent&e, uvw::PipeHandle&) {
-    std::cout << "Error" << std::endl;
+    //std::cout << "Error" << std::endl;
     throw std::exception();
   });
   socket->once<uvw::ConnectEvent>([](const uvw::ConnectEvent&, uvw::PipeHandle&) {
-    std::cout << "All succeed" << std::endl;
+    //std::cout << "All succeed" << std::endl;
   });
   socket->on<uvw::DataEvent>([this](const uvw::DataEvent &dataEvent, uvw::PipeHandle &) {
     std::string response = std::string(dataEvent.data.get(), dataEvent.length);
-    std::cout << "Data received" << std::endl;
-    std::cout << response << std::endl;
+    //std::cout << "Data received" << std::endl;
+    //std::cout << response << std::endl;
     try {
       parseResponse(json::parse(response));
     } catch (...) {
-      std::cout << "Error in data received" << std::endl;
+      //std::cout << "Error in data received" << std::endl;
       // throw ;
     }
   });
   socket->on<uvw::WriteEvent>([this](const uvw::WriteEvent &, uvw::PipeHandle &sock) {
-    std::cout << "Data sent" << std::endl;
+    //std::cout << "Data sent" << std::endl;
     sock.read();
     // if the service doesn't respond after 200ms, stop the loop
     timer->start(writeTimeout, std::chrono::duration<uint64_t, std::milli>(1000));
@@ -79,7 +79,7 @@ void Albinos::Config::initSocket()
     socketLoop->stop();
     handle.stop();
   });
-  std::cout << "Trying to connect to " << socketPath << std::endl;
+  //std::cout << "Trying to connect to " << socketPath << std::endl;
   socket->connect(socketPath);
   socketLoop->run<uvw::Loop::Mode::ONCE>();
 }
