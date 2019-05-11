@@ -1,31 +1,19 @@
+import terminal
+import docopt
 import libalbinos/albinos
-include albinospkg/options
-
+import albinospkg/gui
+import albinospkg/cli
+import albinospkg/options
 
 when isMainModule:
     let args = parseOpt()
     if args["config"]:
         echo "config options invoked"
     elif args["--cli"]:
-        echo "CLI mode invoked"
+        launchCLI()
     elif args["--gui"]:
-        echo "GUI mode invoked"
-        echo args
-
-#import gintro/[gtk, glib, gobject, gio, gtksource]
-
-#proc appActivate(app: Application) =
-#  var builder = newBuilder()
-#  discard addFromFile(builder, "example.glade")
-#  let window = getApplicationWindow(builder, "window")
-#  window.setApplication(app)
-#  showAll(window)
-
-#proc main =
-#  loadConfig()
-#  let app = newApplication("org.gtk.example")
-#  connect(app, "activate", appActivate)
-#  discard run(app)
+        styledEcho(fgCyan, "Launching GUI")
+        launchGUI()
 
     #var cfg : Config
     #var cfgp = addr cfg
