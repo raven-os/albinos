@@ -3,6 +3,7 @@ import strutils
 import rdstdin
 import linenoise
 import cmd
+import ../libalbinos/albinos
 
 const help_cmd_msg = "\t\e[93mhelp\e[39m (show this message)\n\t"
 const exit_cmd_msg = "\e[93mexit\e[39m (quitting the app)\n\t"
@@ -17,7 +18,7 @@ proc yes(question: string): bool =
     echo question, " (\e[93my\e[39m/\e[93mn\e[39m)"
     while true:
         var line: TaintedString
-        let res = readLineFromStdin("", line)
+        let res = readLineFromStdin("Answer: ", line)
         if res == false:
             styledEcho(fgMagenta, "Question Aborted, no is assumed.")
             return false
@@ -27,8 +28,15 @@ proc yes(question: string): bool =
             else: echo "Please be clear: yes or no"
 
 proc handleCreateConfigCmd(args: openArray[string]) =
-    discard createCfg(args[1])
-    if yes("Do you want to load the configuration: " & args[1] & " ?"):
+    styledEcho "Creating configuration ", fgMagenta, args[1], fgWhite, "..."
+    let (_, result) = createCfg(args[1])
+    case result:
+        of ReturnedValue.SUCCESS:
+            styledEcho "Successfuly created configuration ", fgMagenta, args[
+                    1], fgWhite
+        else:
+            echo result
+    if yes("Do you want to load the configuration: " & "\e[35m" & args[1] & "\e[39m" & " ?"):
         echo "Loading configuration"
 
 proc handleConfigCmd(configCmdArgs: openArray[string]) =
