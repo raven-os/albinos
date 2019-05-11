@@ -15,17 +15,17 @@ const global_help = "Usage:\n" & help_cmd_msg & exit_cmd_msg & clear_cmd_msg &
 
 
 proc yes(question: string): bool =
-    echo question, " (\e[93my\e[39m/\e[93mn\e[39m)"
+    echo question, " (\e[93my\e[39m/\e[93mN\e[39m)"
     while true:
         var line: TaintedString
         let res = readLineFromStdin("Answer: ", line)
         if res == false:
-            styledEcho(fgMagenta, "Question Aborted, no is assumed.")
+            styledEcho(fgMagenta, "Question Aborted, (assuming no).")
             return false
         case line:
             of "y", "Y", "yes", "Yes": return true
             of "n", "N", "no", "No": return false
-            else: echo "Please be clear: yes or no"
+            else: echo "Please be clear: yes or no, you write ", line, "."
 
 proc handleCreateConfigCmd(args: openArray[string]) =
     styledEcho "Creating configuration ", fgMagenta, args[1], fgWhite, "..."
