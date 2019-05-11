@@ -1,6 +1,5 @@
 import terminal
 import docopt
-import libalbinos/albinos
 import albinospkg/gui
 import albinospkg/cli
 import albinospkg/options
