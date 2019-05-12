@@ -8,7 +8,7 @@ import ../libalbinos/albinos
 const help_cmd_msg = "\t\e[93mhelp\e[39m (show this message)\n\t"
 const exit_cmd_msg = "\e[93mexit\e[39m (quitting the app)\n\t"
 const clear_cmd_msg = "\e[93mclear\e[39m (clear the screen)\n\t"
-const config_create_cmd_msg = "\e[93mconfig\e[39m \e[94mcreate\e[39m <\e[95mname\e[39m> (create a config witht the given name)"
+const config_create_cmd_msg = "\e[93mconfig\e[39m \e[94mcreate\e[39m <\e[95mname\e[39m> (create a config with the given name)"
 const global_help = "Usage:\n" & help_cmd_msg & exit_cmd_msg & clear_cmd_msg &
     config_create_cmd_msg
 
