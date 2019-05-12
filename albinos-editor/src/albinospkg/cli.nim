@@ -29,14 +29,22 @@ proc yes(question: string): bool =
 
 proc handleCreateConfigCmd(args: openArray[string]) =
     styledEcho "Creating configuration ", fgMagenta, args[1], fgWhite, "..."
-    let (_, result) = createCfg(args[1])
+    let (cfg, result) = createCfg(args[1])
     case result:
         of ReturnedValue.SUCCESS:
+            var regularKey: Key
+            var readOnlyKey: Key
+            discard getConfigKey(cfg, addr regularKey)
+            discard getReadOnlyConfigKey(cfg, addr readOnlyKey)
             styledEcho "Successfuly created configuration ", fgMagenta, args[
                     1], fgWhite
+            styledEcho "Regular key: ", fgGreen, $cast[cstring](regularKey.data)
+            styledEcho "Read only key: ", fgGreen, $cast[cstring](readOnlyKey.data)
         else:
             echo result
-    if yes("Do you want to load the configuration: " & "\e[35m" & args[1] & "\e[39m" & " ?"):
+            return
+    if yes("Do you want to load the configuration: " & "\e[35m" & args[
+            1] & "\e[39m" & " ?"):
         echo "Loading configuration"
 
 proc handleConfigCmd(configCmdArgs: openArray[string]) =
