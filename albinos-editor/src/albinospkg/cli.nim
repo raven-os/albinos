@@ -38,7 +38,7 @@ proc yes(question: string): bool =
       case line:
          of "y", "Y", "yes", "Yes": return true
          of "n", "N", "no", "No": return false
-         else: echo "Please be clear: yes or no, you write ", line, "."
+         else: echo "Please be clear: yes or no, you wrote ", line, "."
 
 proc handleCreateConfigCmd(args: openArray[string]) =
    styledEcho "Creating configuration ", fgMagenta, args[1], fgWhite, "..."
