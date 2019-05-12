@@ -38,8 +38,10 @@ proc handleCreateConfigCmd(args: openArray[string]) =
             discard getReadOnlyConfigKey(cfg, addr readOnlyKey)
             styledEcho "Successfuly created configuration ", fgMagenta, args[
                     1], fgWhite
-            styledEcho "Regular key: ", fgGreen, $cast[cstring](regularKey.data)
-            styledEcho "Read only key: ", fgGreen, $cast[cstring](readOnlyKey.data)
+            styledEcho "Regular key: ", fgGreen,
+                    $ cast[cstring](regularKey.data)
+            styledEcho "Read only key: ", fgGreen, $ cast[cstring](
+                    readOnlyKey.data)
         else:
             echo result
             return
@@ -65,6 +67,8 @@ proc cliLoop() =
         if res == false:
             styledEcho(fgMagenta, "Quitting CLI mode...")
             break
+        if line.string.len == 0:
+            continue
         let args = line.string.unindent.splitWhitespace
         case args[0]:
             of "exit": break
