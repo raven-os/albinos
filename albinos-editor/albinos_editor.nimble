@@ -13,3 +13,4 @@ bin           = @["albinos_editor"]
 requires "nim >= 0.19.9"
 requires "gintro#head"
 requires "docopt#head"
+requires "nimcx#head"
