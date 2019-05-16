@@ -82,7 +82,6 @@ proc handleCreateConfigCmd(args: openArray[string]) =
       handleLoadConfigCmd()
 
 proc handleConfigCmd(configCmdArgs: openArray[string]) =
-   echo "lol"
    case len(configCmdArgs):
       of 3:
          case configCmdArgs[1]:
