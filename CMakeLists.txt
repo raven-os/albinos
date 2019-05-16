@@ -26,8 +26,15 @@ FetchContent_Declare(
         GIT_TAG        v1.16.0_libuv-v1.28
 )
 
+FetchContent_Declare(
+        replxx
+        GIT_REPOSITORY https://github.com/AmokHuginnsson/replxx
+)
+
 
 FetchContent_MakeAvailable(uvw)
+
+FetchContent_MakeAvailable(replxx)
 
 add_library(uvw INTERFACE)
 target_link_libraries(uvw INTERFACE uv_a)

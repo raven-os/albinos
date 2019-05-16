@@ -24,7 +24,7 @@ var msgTable = englishTable
 
 proc globalHelpMsg() =
    var nocolor: bool = false
-   println(msgTable["usage"])
+   println(msgTable["usage"], bgr=bgDefault)
    printLnBiCol(msgTable["help_cmd_msg"],
          colLeft = if nocolor == true: termwhite else: yellow,
       colRight = termwhite, sep = " ", xpos = 8)
