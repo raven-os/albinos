@@ -24,7 +24,7 @@ var msgTable = englishTable
 
 proc globalHelpMsg() =
    var nocolor: bool = false
-   println(msgTable["usage"], bgr=bgDefault)
+   println(msgTable["usage"], bgr = bgDefault)
    printLnBiCol(msgTable["help_cmd_msg"],
          colLeft = if nocolor == true: termwhite else: yellow,
       colRight = termwhite, sep = " ", xpos = 8)
@@ -40,7 +40,7 @@ proc globalHelpMsg() =
          sep = " ", xpos = 8)
    printHL("<name>", substr = "name", col = if nocolor ==
          true: termwhite else: magenta)
-   printLn(" (create a config with the given name)")
+   printLn(" (create a config with the given name)", bgr = bgDefault)
 
 
 proc yes(question: string): bool =
@@ -135,12 +135,27 @@ proc completionHook(input: cstring, completions: ptr replxx_completions,
       if strncmp(input + prefixLen, item, utf8ContextLen) == 0:
          replxx_add_completion(completions, item)
 
+proc hintHook(input: cstring, hints: ptr replxx_hints, contextLen: ptr cint,
+      color: ptr ReplxxColor, userData: pointer) {.cdecl.} =
+   var utf8ContextLen = context_len(input)
+   var prefixLen = input.len - utf8ContextLen;
+   contextLen[] = utf8str_codepoint_len(input + prefixLen, utf8ContextLen);
+   var sub: string = substr($input, prefixLen, input.len)
+   if not sub.len == 0 or sub.len >= 2:
+      for idx, item in cmd_registry:
+         if strncmp(input + prefixLen, item, utf8ContextLen) == 0:
+            replxx_add_hint(hints, item)
+
 proc launchCLI*() =
    var repl = replxx_init()
    discard replxx_install_window_change_handler(repl)
    discard replxx_history_load(repl, history_file)
+   replxx_set_word_break_characters(repl, " \t.,-%!;:=*~^'\"/?<>|[](){}")
+   replxx_set_complete_on_empty(repl, 1)
    replxx_set_completion_callback(repl, cast[ptr replxx_completion_callback_t](
          completionHook), cast[pointer](cmd_registry.unsafeAddr))
+   replxx_set_hint_callback(repl, cast[ptr replxx_hint_callback_t](hintHook), cast[
+         pointer](cmd_registry.unsafeAddr))
    globalHelpMsg()
    cliLoop(repl)
    discard replxx_history_save(repl, history_file)
