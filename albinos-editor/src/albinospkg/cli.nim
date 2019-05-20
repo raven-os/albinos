@@ -8,17 +8,34 @@ import cmd
 import ../libalbinos/albinos
 import ../ext/replxx
 import util
+import regex
 
 var currentConfig: ptr Config
 
-const englishTable =
-   {
+const
+   prompt = "\x1b[1;32malbinos-editor\x1b[0m> "
+   history_file = "albinos-editor_history.txt"
+   regexColorRegistry = {
+      "\\(": REPLXX_COLOR_BRIGHTRED,
+      "\\)": REPLXX_COLOR_BRIGHTRED,
+      "\\\"": REPLXX_COLOR_BLUE,
+      "\\\"": REPLXX_COLOR_BLUE,
+      "\\exit": REPLXX_COLOR_GREEN,
+      "\\clear": REPLXX_COLOR_GREEN,
+      "\\help": REPLXX_COLOR_GREEN,
+      "\\config": REPLXX_COLOR_YELLOW,
+      "\\create": REPLXX_COLOR_BRIGHTBLUE,
+      "[\\-|+]{0,1}[0-9]+": REPLXX_COLOR_YELLOW,
+      "\".*?\"": REPLXX_COLOR_BRIGHTGREEN
+   }.toTable
+   englishTable = {
     "usage": "Usage:",
     "help_cmd_msg": "help (show this message)",
     "exit_cmd_msg": "exit (quitting the app)",
     "clear_cmd_msg": "clear (clear the screen)",
     "config_create_cmd_msg": "config create <name> (create a config with the given name)"
    }.toTable
+let cmd_registry = @["help", "exit", "clear", "config create "]
 
 var msgTable = englishTable
 
@@ -60,16 +77,19 @@ proc handleLoadConfigCmd() =
    echo "Loading configuration"
 
 proc handleCreateConfigCmd(args: openArray[string]) =
-   styledEcho "Creating configuration ", fgMagenta, args[1], fgWhite, "..."
-   let (currentConfig, line) = createCfg(args[1])
+   var configName = args[1]
+   if args[1].contains("\""):
+      configName = configName.unescape
+   styledEcho "Creating configuration ", fgMagenta, configName, fgWhite, "..."
+   let (currentConfig, line) = createCfg(configName)
    case line:
       of ReturnedValue.SUCCESS:
-         var regularKey: albinos.Key
-         var readOnlyKey: albinos.Key
+         var
+            regularKey: albinos.Key
+            readOnlyKey: albinos.Key
          discard getConfigKey(currentConfig, addr regularKey)
          discard getReadOnlyConfigKey(currentConfig, addr readOnlyKey)
-         styledEcho "Successfuly created configuration ", fgMagenta, args[
-                     1], fgWhite
+         styledEcho "Successfuly created configuration ", fgMagenta, configName, fgWhite
          styledEcho "Regular key: ", fgGreen,
                      $ cast[cstring](regularKey.data)
          styledEcho "Read only key: ", fgGreen, $ cast[cstring](
@@ -77,8 +97,7 @@ proc handleCreateConfigCmd(args: openArray[string]) =
       else:
          echo line
          return
-   if yes("Do you want to load the configuration: " & "\e[35m" & args[
-             1] & "\e[39m" & " ?"):
+   if yes("Do you want to load the configuration: " & "\e[35m" & configName & "\e[39m" & " ?"):
       handleLoadConfigCmd()
 
 proc handleConfigCmd(configCmdArgs: openArray[string]) =
@@ -92,19 +111,14 @@ proc handleConfigCmd(configCmdArgs: openArray[string]) =
       else:
          globalHelpMsg()
 
-
-const prompt = "\x1b[1;32malbinos-editor\x1b[0m$ "
-const history_file = "albinos-editor_history.txt"
-let cmd_registry = @["help", "exit", "clear", "config create "]
-
 proc cliLoop(repl: ptr Replxx) =
    while true:
       var cline = replxx_input(repl, prompt);
       if cline == nil:
          styledEcho(fgMagenta, "Quitting CLI mode...")
          break
-      var line = $cline
-      if line.len == 0:
+      let line = $cline
+      if line.len == 0 or isSpaceAscii(line):
          continue
       let args = line.unindent.splitWhitespace
       replxx_history_add(repl, cline)
@@ -117,19 +131,11 @@ proc cliLoop(repl: ptr Replxx) =
          of "config": handleConfigCmd(toOpenArray(args, 0, len(args) - 1))
          else: globalHelpMsg()
 
-func `+`*(p: cstring, offset: int): type(p) {.inline.} =
-   ## Pointer increment
-   {.emit: "`result` = `p` + `offset`;".}
-
-
-proc strncmp(s1: cstring, s2: cstring, n: csize): cint
-   {.header: "<string.h>", importc: "strncmp".}
-
-
 proc completionHook(input: cstring, completions: ptr replxx_completions,
       contextLen: ptr cint, userData: pointer) {.cdecl.} =
-   var utf8ContextLen = context_len(input)
-   var prefixLen = input.len - utf8ContextLen;
+   var
+      utf8ContextLen = context_len(input)
+      prefixLen = input.len - utf8ContextLen;
    contextLen[] = utf8str_codepoint_len(input + prefixLen, utf8ContextLen);
    for idx, item in cmd_registry:
       if strncmp(input + prefixLen, item, utf8ContextLen) == 0:
@@ -137,14 +143,26 @@ proc completionHook(input: cstring, completions: ptr replxx_completions,
 
 proc hintHook(input: cstring, hints: ptr replxx_hints, contextLen: ptr cint,
       color: ptr ReplxxColor, userData: pointer) {.cdecl.} =
-   var utf8ContextLen = context_len(input)
-   var prefixLen = input.len - utf8ContextLen;
+   var
+      nbHints = 0
+      utf8ContextLen = context_len(input)
+      prefixLen = input.len - utf8ContextLen
    contextLen[] = utf8str_codepoint_len(input + prefixLen, utf8ContextLen);
-   var sub: string = substr($input, prefixLen, input.len)
+   var sub = substr($input, prefixLen, input.len)
    if not sub.len == 0 or sub.len >= 2:
       for idx, item in cmd_registry:
          if strncmp(input + prefixLen, item, utf8ContextLen) == 0:
             replxx_add_hint(hints, item)
+            nbHints += 1
+   if nbHints == 1:
+      color[] = REPLXX_COLOR_GREEN
+
+proc highlighterHook(input: cstring, colors: ptr ReplxxColor,
+                                      size: cint, userData: pointer) {.cdecl.} =
+   for key, currentColor in regexColorRegistry:
+      for m in findAll($input, re(key)):
+         for i in m.boundaries.a .. m.boundaries.b:
+            (colors + i)[] = currentColor
 
 proc launchCLI*() =
    var repl = replxx_init()
@@ -156,6 +174,9 @@ proc launchCLI*() =
          completionHook), cast[pointer](cmd_registry.unsafeAddr))
    replxx_set_hint_callback(repl, cast[ptr replxx_hint_callback_t](hintHook), cast[
          pointer](cmd_registry.unsafeAddr))
+   replxx_set_highlighter_callback(repl,
+         cast[ptr replxx_highlighter_callback_t](
+         highlighterHook), nil)
    globalHelpMsg()
    cliLoop(repl)
    discard replxx_history_save(repl, history_file)
