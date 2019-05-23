@@ -47,9 +47,18 @@ namespace Albinos
       };
 
     ///
+    /// \brief indicate the type of modification which happen to subscribed setting
+    ///
+    enum ModifType
+      {
+       UPDATE,
+       DELETE,
+      };
+
+    ///
     /// \brief type of function pointer for setting change subscription
     ///
-    typedef void (*FCPTR_ON_CHANGE_NOTIFIER)(void *data, char const *newValue);
+    typedef void (*FCPTR_ON_CHANGE_NOTIFIER)(void *data, enum ModifType);
 
     ///
     /// \brief indicate the key type
@@ -313,6 +322,26 @@ namespace Albinos
     /// \return error code
     ///
     enum ReturnedValue uninclude(struct Config *config, struct Key *otherConfig, int position);
+
+    ///
+    /// \brief be notified when a setting change
+    /// \param the config
+    /// \param 'name' setting you want to watch
+    /// \param 'data' point to userdata, which will be forwarded to the callback
+    /// \param 'onChange' function pointer callback which will be called once for each setting change
+    /// \param 'subscription' in case of success, a new 'struct Subscription' will be written
+    /// \return error code
+    ///
+    /// To stop the subscription, `unsubsribe` must be called.
+    ///
+    enum ReturnedValue subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, struct Subscription **subscription);
+
+    ///
+    /// \brief call all callbacks for subscribed settings with updates
+    /// \param the config
+    /// \return error code
+    ///
+    enum ReturnedValue pollSubscriptions(struct Config*);
 
 #ifdef __cplusplus
   }

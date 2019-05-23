@@ -194,3 +194,10 @@ Albinos::ReturnedValue Albinos::destroyConfig(Config const *config)
     return BAD_PARAMETERS;
   return config->deleteConfig();
 }
+
+Albinos::ReturnedValue Albinos::pollSubscriptions(Config *config)
+{
+  if (!config)
+    return BAD_PARAMETERS;
+  return config->pollSubscriptions();
+}

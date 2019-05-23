@@ -44,9 +44,9 @@ All the local settings are applied after the config inclusions.
 ## Events
 
 The service can also send a message to the lib if a subscribed setting is modified.
-All events must contain "SETTING_NAME" containing the name of the concerned setting.
+All events must contain "SETTING_NAME" containing the name of the concerned setting and "SUBSCRIPTION_EVENT_TYPE" containing one of the following values :
 
-| Action | Description |
+| Value | Description |
 | ---- | ---- |
-| *UPDATE* | Contain the new value of the setting in case of value update. |
-| *DELETE* | Boolean indicating if setting was deleted. |
+| *UPDATE* | The value has changer |
+| *DELETE* | The setting has been deleted |
