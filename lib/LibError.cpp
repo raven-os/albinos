@@ -6,5 +6,5 @@ LibError::LibError(int errorCode)
 
 int LibError::getCode(void) const throw()
 {
-  return errorCode;
+  return code;
 }
