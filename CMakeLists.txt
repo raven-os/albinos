@@ -52,3 +52,6 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(${PROJECT_NAME} albinos::uvw stdc++fs)
 target_include_directories(${PROJECT_NAME} PUBLIC vendor/uvw/src vendor/uvw/deps/libuv/include vendor/json/single_include/nlohmann)
 add_subdirectory(tests)
+
+install(TARGETS ${PROJECT_NAME} DESTINATION lib)
+install(FILES lib/Albinos.h DESTINATION include)
