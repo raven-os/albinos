@@ -99,6 +99,10 @@ proc handleCreateConfigCmd(args: openArray[string]) =
          return
    if yes("Do you want to load the configuration: " & "\e[35m" & configName & "\e[39m" & " ?"):
       handleLoadConfigCmd()
+   else:
+      styledEcho "Release configuration: ", fgMagenta, configName
+      releaseConfig(currentConfig)
+
 
 proc handleConfigCmd(configCmdArgs: openArray[string]) =
    case len(configCmdArgs):
