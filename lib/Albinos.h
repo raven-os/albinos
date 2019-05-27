@@ -114,21 +114,6 @@ namespace Albinos
     void unsubscribe(struct Subscription*);
 
     ///
-    /// \brief be notified when a setting change. Cancel the subscription using "unsubscribe"
-    /// \param the config
-    /// \param 'name' setting you want to watch
-    /// \param 'data' point to userdata, which will be forwarded to the callback
-    /// \param 'onChange' function pointer callback which will be called once for each setting change
-    /// \param 'subscription' in case of success, a new 'struct Subscription' will be written
-    /// \return error code
-    ///
-    /// To stop the subscription, `unsubsribe` must be called.
-    /// To get the subsrption's user data one can use `getSubscriptionUserData`
-    /// To get the subsrption's setting name one can use `getSubscriptionSettingName`
-    ///
-    enum ReturnedValue subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, struct Subscription **subscription);
-
-    ///
     ///
     /// CONFIG
     ///
@@ -335,6 +320,8 @@ namespace Albinos
     /// \return error code
     ///
     /// To stop the subscription, `unsubsribe` must be called.
+    /// To get the subsrption's user data one can use `getSubscriptionUserData`
+    /// To get the subsrption's setting name one can use `getSubscriptionSettingName`
     ///
     enum ReturnedValue subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, struct Subscription **subscription);
 
