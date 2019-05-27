@@ -277,6 +277,18 @@ Albinos::ReturnedValue Albinos::Config::include(Key *inheritFrom, int position)
 }
 
 ///
+/// \todo implementation
+///
+Albinos::ReturnedValue Albinos::Config::uninclude(Key *inheritFrom, int position)
+{
+  if (irrecoverable.has_value())
+    return *irrecoverable;
+  (void)inheritFrom;
+  (void)position;
+  return SUCCESS;
+}
+
+///
 /// \todo get errors
 ///
 Albinos::ReturnedValue Albinos::Config::subscribeToSetting(char const *settingName, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, Subscription **subscription)
