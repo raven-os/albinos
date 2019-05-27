@@ -10,9 +10,8 @@ Albinos::ReturnedValue Albinos::createConfig(char const *configName, Config **re
 {
   try {
     *returnedConfig = new Config(configName);
-  } catch (std::exception const &e) {
-    /// \todo catch error nicely and return relevant error
-    return UNKNOWN;
+  } catch (LibError const &e) {
+    return e.getCode();
   }
   return SUCCESS;
 }
@@ -21,9 +20,8 @@ Albinos::ReturnedValue Albinos::getConfig(Key key, Config **returnedConfig)
 {
   try {
     *returnedConfig = new Config(key);
-  } catch (std::exception const &e) {
-    /// \todo catch error nicely and return relevant error
-    return UNKNOWN;
+  } catch (LibError const &e) {
+    return e.getCode();
   }
   return SUCCESS;
 }
@@ -32,9 +30,8 @@ Albinos::ReturnedValue Albinos::getReadOnlyConfig(Key key, Config const **return
 {
   try {
     *returnedConfig = new Config(key);
-  } catch (std::exception const &e) {
-    /// \todo catch error nicely and return relevant error
-    return UNKNOWN;
+  } catch (LibError const &e) {
+    return e.getCode();
   }
   return SUCCESS;
 }
@@ -49,7 +46,11 @@ Albinos::ReturnedValue Albinos::getConfigKey(Config const *config, Key *configKe
   configKey->data = nullptr;
   if (!config || !configKey)
     return BAD_PARAMETERS;
-  return config->getKey(configKey);
+  try {
+    return config->getKey(configKey);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::getReadOnlyConfigKey(Config const *config, Key *configKey)
@@ -57,77 +58,121 @@ Albinos::ReturnedValue Albinos::getReadOnlyConfigKey(Config const *config, Key *
   configKey->data = nullptr;
   if (!config || !configKey)
     return BAD_PARAMETERS;
-  return config->getReadOnlyKey(configKey);
+  try {
+    return config->getReadOnlyKey(configKey);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::setSetting(Config *config, char const *name, char const *value)
 {
   if (!config || !name || !value)
     return BAD_PARAMETERS;
-  return config->setSetting(name, value);
+  try {
+    return config->setSetting(name, value);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::setSettingAlias(Config *config, char const *name, char const *aliasName)
 {
   if (!config || !name || !aliasName)
     return BAD_PARAMETERS;
-  return config->setSettingAlias(name, aliasName);
+  try {
+    return config->setSettingAlias(name, aliasName);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::unsetAlias(Config *config, char const *aliasName)
 {
   if (!config || !aliasName)
     return BAD_PARAMETERS;
-  return config->unsetAlias(aliasName);
+  try {
+    return config->unsetAlias(aliasName);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::removeSetting(Config *config, char const *name)
 {
   if (!config || !name)
     return BAD_PARAMETERS;
-  return config->removeSetting(name);
+  try {
+    return config->removeSetting(name);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::getSettingValue(Config const *config, char const *settingName, char *value, size_t valueSize)
 {
   if (!config || !settingName || !value)
     return BAD_PARAMETERS;
-  return config->getSettingValue(settingName, value, valueSize);
+  try {
+    return config->getSettingValue(settingName, value, valueSize);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::getSettingSize(Config const *config, char const *settingName, size_t *size)
 {
   if (!config || !settingName || !size)
     return BAD_PARAMETERS;
-  return config->getSettingSize(settingName, size);
+  try {
+    return config->getSettingSize(settingName, size);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::include(Config *config, Key *inheritFrom, int position)
 {
   if (!config || !inheritFrom)
     return BAD_PARAMETERS;
-  return config->include(inheritFrom, position);
+  try {
+    return config->include(inheritFrom, position);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::uninclude(Config *config, Key *otherConfig, int position)
 {
   if (!config || !otherConfig)
     return BAD_PARAMETERS;
-  return config->include(otherConfig, position);
+  try {
+    return config->uninclude(otherConfig, position);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::subscribeToSetting(Config *config, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, Subscription **subscription)
 {
   if (!config || !name || !onChange)
     return BAD_PARAMETERS;
-  return config->subscribeToSetting(name, data, onChange, subscription);
+  try {
+    return config->subscribeToSetting(name, data, onChange, subscription);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::getDependencies(Config const *config, Config **deps, size_t *size)
 {
   if (!config || !deps || !size)
     return BAD_PARAMETERS;
-  return config->getDependencies(deps, size);
+  try {
+    return config->getDependencies(deps, size);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 void Albinos::destroyDependenciesArray(Config *deps, size_t size)
@@ -141,14 +186,22 @@ Albinos::ReturnedValue Albinos::getLocalSettings(Config const *config, Setting *
 {
   if (!config || !settings || !size)
     return BAD_PARAMETERS;
-  return config->getLocalSettings(settings, size);
+  try {
+    return config->getLocalSettings(settings, size);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::getLocalSettingsNames(Config const *config, char ***names)
 {
   if (!config || !names)
     return BAD_PARAMETERS;
-  return config->getLocalSettingsNames(names);
+  try {
+    return config->getLocalSettingsNames(names);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 void Albinos::destroySettingsNamesArray(char **names)
@@ -175,7 +228,11 @@ Albinos::ReturnedValue Albinos::getLocalAliases(Config const *config, Alias **al
 {
   if (!config || !aliases || !size)
     return BAD_PARAMETERS;
-  return config->getLocalAliases(aliases, size);
+  try {
+    return config->getLocalAliases(aliases, size);
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 void Albinos::destroyAliasesArray(Alias *aliases, size_t size)
@@ -193,14 +250,22 @@ Albinos::ReturnedValue Albinos::destroyConfig(Config const *config)
 {
   if (!config)
     return BAD_PARAMETERS;
-  return config->deleteConfig();
+  try {
+    return config->deleteConfig();
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 Albinos::ReturnedValue Albinos::pollSubscriptions(Config *config)
 {
   if (!config)
     return BAD_PARAMETERS;
-  return config->pollSubscriptions();
+  try {
+    return config->pollSubscriptions();
+  } catch (LibError const &e) {
+    return e.getCode();
+  }
 }
 
 void *Albinos::getSupscriptionUserData(struct Albinos::Subscription const *subsription)

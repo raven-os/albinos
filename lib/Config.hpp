@@ -29,6 +29,8 @@ namespace Albinos
 
     using json = nlohmann::json;
 
+    std::optional<ReturnedValue> irrecoverable;
+
     std::optional<std::string> name;
     uint32_t configId;
     std::string lastRequestedValue;

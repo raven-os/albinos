@@ -1,10 +1,10 @@
 # include "LibError.hpp"
 
-LibError::LibError(int errorCode)
+LibError::LibError(Albinos::ReturnedValue errorCode)
   : code(errorCode)
 {}
 
-int LibError::getCode(void) const throw()
+Albinos::ReturnedValue LibError::getCode(void) const throw()
 {
   return code;
 }

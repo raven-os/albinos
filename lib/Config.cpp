@@ -17,7 +17,7 @@ void Albinos::Config::parseResponse(json const &data)
     else if (modifStr == "DELETE")
       modif = DELETE;
     else
-      throw LibError();
+      throw LibError(INVALID_REPONSE_FROM_SERVICE);
     settingsUpdates.push_back({data.at("SETTING_NAME").get<std::string>(), modif});
     if (waitingForResponse)
       socketLoop->run<uvw::Loop::Mode::ONCE>();
@@ -54,9 +54,14 @@ void Albinos::Config::initSocket()
 {
   std::string socketPath = (std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock").string();
 
-  socket->on<uvw::ErrorEvent>([](const uvw::ErrorEvent&e, uvw::PipeHandle&) {
+  socket->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent&e, uvw::PipeHandle&) {
     std::cout << "Error" << std::endl;
-    throw LibError();
+    switch (e.code()) {
+      /// \todo catch relevant value from libuv http://docs.libuv.org/en/v1.x/errors.html
+    default:
+      irrecoverable = UNKNOWN;
+      throw LibError();
+    }
   });
   socket->once<uvw::ConnectEvent>([](const uvw::ConnectEvent&, uvw::PipeHandle&) {
     //std::cout << "All succeed" << std::endl;
@@ -65,12 +70,7 @@ void Albinos::Config::initSocket()
     std::string response = std::string(dataEvent.data.get(), dataEvent.length);
     //std::cout << "Data received" << std::endl;
     //std::cout << response << std::endl;
-    try {
-      parseResponse(json::parse(response));
-    } catch (...) {
-      //std::cout << "Error in data received" << std::endl;
-      // throw ;
-    }
+    parseResponse(json::parse(response));
   });
   socket->on<uvw::WriteEvent>([this](const uvw::WriteEvent &, uvw::PipeHandle &sock) {
     //std::cout << "Data sent" << std::endl;
@@ -158,6 +158,8 @@ Albinos::Config::~Config()
 
 Albinos::ReturnedValue Albinos::Config::getKey(Key *configKey) const
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   if (!key)
     return KEY_NOT_INITIALIZED;
   key->dupKey(*configKey);
@@ -166,6 +168,8 @@ Albinos::ReturnedValue Albinos::Config::getKey(Key *configKey) const
 
 Albinos::ReturnedValue Albinos::Config::getReadOnlyKey(Key *configKey) const
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   if (!roKey)
     return KEY_NOT_INITIALIZED;
   roKey->dupKey(*configKey);
@@ -177,6 +181,8 @@ Albinos::ReturnedValue Albinos::Config::getReadOnlyKey(Key *configKey) const
 ///
 Albinos::ReturnedValue Albinos::Config::getSettingValue(char const *settingName, char *value, size_t valueSize) const
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "SETTING_GET";
   request["CONFIG_ID"] = configId;
@@ -191,6 +197,8 @@ Albinos::ReturnedValue Albinos::Config::getSettingValue(char const *settingName,
 ///
 Albinos::ReturnedValue Albinos::Config::getSettingSize(char const *settingName, size_t *size) const
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "SETTING_GET";
   request["CONFIG_ID"] = configId;
@@ -205,6 +213,8 @@ Albinos::ReturnedValue Albinos::Config::getSettingSize(char const *settingName, 
 ///
 Albinos::ReturnedValue Albinos::Config::setSetting(char const *name, char const *value)
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "SETTING_UPDATE";
   request["CONFIG_ID"] = configId;
@@ -218,6 +228,8 @@ Albinos::ReturnedValue Albinos::Config::setSetting(char const *name, char const 
 ///
 Albinos::ReturnedValue Albinos::Config::setSettingAlias(char const *name, char const *aliasName)
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "ALIAS_SET";
   request["CONFIG_ID"] = configId;
@@ -232,6 +244,8 @@ Albinos::ReturnedValue Albinos::Config::setSettingAlias(char const *name, char c
 ///
 Albinos::ReturnedValue Albinos::Config::unsetAlias(char const *aliasName)
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "ALIAS_UNSET";
   request["ALIAS_NAME"] = aliasName;
@@ -244,6 +258,8 @@ Albinos::ReturnedValue Albinos::Config::unsetAlias(char const *aliasName)
 ///
 Albinos::ReturnedValue Albinos::Config::removeSetting(char const *name)
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   (void)name;
   return SUCCESS;
 }
@@ -253,6 +269,8 @@ Albinos::ReturnedValue Albinos::Config::removeSetting(char const *name)
 ///
 Albinos::ReturnedValue Albinos::Config::include(Key *inheritFrom, int position)
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   (void)inheritFrom;
   (void)position;
   return SUCCESS;
@@ -263,6 +281,8 @@ Albinos::ReturnedValue Albinos::Config::include(Key *inheritFrom, int position)
 ///
 Albinos::ReturnedValue Albinos::Config::subscribeToSetting(char const *settingName, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, Subscription **subscription)
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   json request;
   *subscription = new Subscription(settingName, onChange, data);
   settingsSubscriptions[settingName] = *subscription;
@@ -278,6 +298,8 @@ Albinos::ReturnedValue Albinos::Config::subscribeToSetting(char const *settingNa
 ///
 Albinos::ReturnedValue Albinos::Config::getDependencies(Config **deps, size_t *size) const
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   (void)deps;
   (void)size;
   return SUCCESS;
@@ -288,6 +310,8 @@ Albinos::ReturnedValue Albinos::Config::getDependencies(Config **deps, size_t *s
 ///
 Albinos::ReturnedValue Albinos::Config::getLocalSettings(Setting **settings, size_t *size) const
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   (void)settings;
   (void)size;
   return SUCCESS;
@@ -298,6 +322,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettings(Setting **settings, siz
 ///
 Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char ***names) const
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   (void)names;
   return SUCCESS;
 }
@@ -307,6 +333,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char ***names) con
 ///
 Albinos::ReturnedValue Albinos::Config::getLocalAliases(Alias **aliases, size_t *size) const
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   (void)aliases;
   (void)size;
   return SUCCESS;
@@ -317,6 +345,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalAliases(Alias **aliases, size_t 
 ///
 Albinos::ReturnedValue Albinos::Config::deleteConfig() const
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   return SUCCESS;
 }
 
@@ -325,6 +355,8 @@ Albinos::ReturnedValue Albinos::Config::deleteConfig() const
 ///
 Albinos::ReturnedValue Albinos::Config::pollSubscriptions()
 {
+  if (irrecoverable.has_value())
+    return *irrecoverable;
   while (socketLoop->run<uvw::Loop::Mode::NOWAIT>());
   while (!settingsUpdates.empty()) {
     settingsSubscriptions.at(settingsUpdates.back().name)->executeCallBack(settingsUpdates.back().modif);

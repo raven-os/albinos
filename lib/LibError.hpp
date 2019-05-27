@@ -1,18 +1,19 @@
 #pragma once
 
+# include "Albinos.h"
 
 class LibError
 {
 
 public:
 
-  LibError(int errorCode = -1);
+  LibError(Albinos::ReturnedValue errorCode = Albinos::UNKNOWN);
   ~LibError(void) throw() {}
 
-  int getCode(void) const throw();
+  Albinos::ReturnedValue getCode(void) const throw();
 
 private:
 
-  int code;
+  Albinos::ReturnedValue code;
 
 };
