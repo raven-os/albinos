@@ -60,7 +60,6 @@ void Albinos::Config::initSocket()
       /// \todo catch relevant value from libuv http://docs.libuv.org/en/v1.x/errors.html
     default:
       irrecoverable = UNKNOWN;
-      throw LibError();
     }
   });
   socket->once<uvw::ConnectEvent>([](const uvw::ConnectEvent&, uvw::PipeHandle&) {
