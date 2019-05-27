@@ -40,6 +40,7 @@ namespace Albinos
 
     std::optional<KeyWrapper> key;
     std::optional<KeyWrapper> roKey;
+    std::unique_ptr<std::vector<std::string>> settingNames;
 
     std::shared_ptr<uvw::Loop> socketLoop{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> socket{socketLoop->resource<uvw::PipeHandle>()};
@@ -75,7 +76,7 @@ namespace Albinos
 
     ReturnedValue getDependencies(Config **deps, size_t *size) const;
     ReturnedValue getLocalSettings(Setting **settings, size_t *size) const;
-    ReturnedValue getLocalSettingsNames(char ***names) const;
+    ReturnedValue getLocalSettingsNames(char const * const **names) const;
     ReturnedValue getLocalAliases(Alias **aliases, size_t *size) const;
 
     ReturnedValue deleteConfig() const;

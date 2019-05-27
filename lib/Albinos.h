@@ -271,13 +271,13 @@ namespace Albinos
     /// \param 'names' ordered list of all local settings names. NULL terminated. Must be released using "destroySettingsNamesArray".
     /// \return error code
     ///
-    enum ReturnedValue getLocalSettingsNames(struct Config const*, char ***names);
+    enum ReturnedValue getLocalSettingsNames(struct Config const*, char const * const **names);
 
     ///
     /// \brief destroy a settings names array obtained with 'getLocalSettingsNames'
     /// \param 'names' array to destroy
     ///
-    void destroySettingsNamesArray(char **names);
+    void destroySettingsNamesArray(char const * const *names);
 
     ///
     /// \brief get the ordered list of all local aliases

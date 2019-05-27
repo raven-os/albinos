@@ -45,6 +45,13 @@ void Albinos::Config::parseResponse(json const &data)
     return;
   } catch (...) {
   }
+
+  try {
+    settingNames.reset(new std::vector<std::string>(std::move(data.at("SETTINGS_NAME").get<std::vector<std::string>>())));
+
+    return;
+  } catch (...) {
+  }
 }
 
 ///
@@ -335,11 +342,24 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettings(Setting **settings, siz
 ///
 /// \todo implementation
 ///
-Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char ***names) const
+Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char const * const **names) const
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
   (void)names;
+  json request;
+  request["REQUEST_NAME"] = "GET_SETTINGS_NAMES";
+  request["CONFIG_ID"] = configId;
+  sendJson(request);
+
+  auto result = new char const *[settingNames->size() + 1];
+  std::transform(settingNames->begin(), settingNames->end(), result,
+		 [](std::string const &str) noexcept
+		 {
+		   return str.c_str();
+		 });
+  result[settingNames->size()] = nullptr;
+  *names = result;
   return SUCCESS;
 }
 
