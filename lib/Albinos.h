@@ -75,7 +75,7 @@ namespace Albinos
     /// \param 'size' is the size of 'data' in bytes
     ///
     struct Key {
-      void *data;
+      char const *data;
       size_t size;
       enum KeyType type;
     };

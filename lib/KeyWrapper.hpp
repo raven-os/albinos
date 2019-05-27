@@ -16,7 +16,7 @@ namespace Albinos
     void dupKey(Key &other) const
     {
       other.data = new char[size];
-      std::memcpy(other.data, data.get(), size);
+      std::memcpy((char *)other.data, data.get(), size);
       other.size = size;
       other.type = READ_WRITE;
     }
