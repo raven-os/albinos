@@ -34,6 +34,7 @@ namespace Albinos
 
     void executeCallBack(ModifType) const;
     std::string const &getAssociatedSetting() const;
+    void *getAssociatedUserData() const;
 
   };
 }

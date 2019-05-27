@@ -58,7 +58,7 @@ namespace Albinos
     ///
     /// \brief type of function pointer for setting change subscription
     ///
-    typedef void (*FCPTR_ON_CHANGE_NOTIFIER)(void *data, enum ModifType);
+    typedef void (*FCPTR_ON_CHANGE_NOTIFIER)(struct Subscription const *, enum ModifType);
 
     ///
     /// \brief indicate the key type
@@ -123,6 +123,8 @@ namespace Albinos
     /// \return error code
     ///
     /// To stop the subscription, `unsubsribe` must be called.
+    /// To get the subsrption's user data one can use `getSubscriptionUserData`
+    /// To get the subsrption's setting name one can use `getSubscriptionSettingName`
     ///
     enum ReturnedValue subscribeToSetting(struct Config*, char const *name, void *data, FCPTR_ON_CHANGE_NOTIFIER onChange, struct Subscription **subscription);
 
@@ -327,7 +329,7 @@ namespace Albinos
     /// \brief be notified when a setting change
     /// \param the config
     /// \param 'name' setting you want to watch
-    /// \param 'data' point to userdata, which will be forwarded to the callback
+    /// \param 'data' point to userdata, which will be available in from the subscription in the callback
     /// \param 'onChange' function pointer callback which will be called once for each setting change
     /// \param 'subscription' in case of success, a new 'struct Subscription' will be written
     /// \return error code
@@ -342,6 +344,23 @@ namespace Albinos
     /// \return error code
     ///
     enum ReturnedValue pollSubscriptions(struct Config*);
+
+    /// Query functions:
+
+    ///
+    /// \brief get a subscription's user data
+    /// \param 'subscription' the subscription to query the user data from
+    /// \return the user data
+    ///
+    void *getSupscriptionUserData(struct Subscription const *);
+
+    ///
+    /// \brief get a subscription's setting name
+    /// \param 'subscription' the subscription to query the setting name from
+    /// \return the setting name
+    ///
+    char const *getSupscriptionSettingName(struct Subscription const *);
+
 
 #ifdef __cplusplus
   }

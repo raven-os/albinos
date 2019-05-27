@@ -1,4 +1,5 @@
-# include "funcHub.hpp"
+#include "funcHub.hpp"
+#include "Subscription.hpp"
 
 void Albinos::unsubscribe(Subscription *sub)
 {
@@ -200,4 +201,14 @@ Albinos::ReturnedValue Albinos::pollSubscriptions(Config *config)
   if (!config)
     return BAD_PARAMETERS;
   return config->pollSubscriptions();
+}
+
+void *Albinos::getSupscriptionUserData(struct Albinos::Subscription const *subsription)
+{
+  return subsription->getAssociatedUserData();
+}
+
+char const *Albinos::getSupscriptionSettingName(struct Albinos::Subscription const *subsription)
+{
+  return subsription->getAssociatedSetting().c_str();
 }
