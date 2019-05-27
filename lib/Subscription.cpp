@@ -16,10 +16,15 @@ Albinos::Subscription::~Subscription()
 
 void Albinos::Subscription::executeCallBack(ModifType modif) const
 {
-  callBack(associatedData, modif);
+  callBack(this, modif);
 }
 
 std::string const &Albinos::Subscription::getAssociatedSetting() const
 {
   return associatedSetting;
+}
+
+void *Albinos::Subscription::getAssociatedUserData() const
+{
+  return associatedData;
 }
