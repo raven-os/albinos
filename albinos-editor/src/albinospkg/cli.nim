@@ -34,9 +34,10 @@ const
     "exit_cmd_msg": "exit (quitting the app)",
     "clear_cmd_msg": "clear (clear the screen)",
     "config_create_cmd_msg": "config create <name> (create a config with the given name)",
-    "config_create_cmd_msg": "config load <file> (load config from the key in the given file)"
+    "config_load_cmd_msg": "config load <file> (load config from the key in the given file)",
+    "setting_update_cmd_msg": "setting update <name> <value> (update setting with the given name to the given value)"
    }.toTable
-let cmd_registry = @["help", "exit", "clear", "config create ", "config load "]
+let cmd_registry = @["help", "exit", "clear", "config create ", "config load ", "setting update "]
 
 var msgTable = englishTable
 
@@ -76,18 +77,16 @@ proc yes(question: string): bool =
 
 proc handleLoadConfig(key : albinos.Key) =
    echo "Loading configuration"
-   discard getConfig(key, addr currentConfig)
+   let err = albinos.getConfig(key, addr currentConfig)
+   if  err != albinos.SUCCESS:
+      echo "Failed to load configuration"
 
 proc handleLoadConfigFromFileCmd(args: openArray[string]) =
-  let file = system.open(args[1])
-  let size = system.getFileSize(file).int
-  var data = system.new_seq[uint8](size)
-  discard system.readBytes(file, system.toOpenArray(data, 0, size), 0, size)
+  let data = readFile(args[1])
   var key : albinos.Key
-  key.data = addr(data[0])
-  key.size = size
+  key.data = data.string.cstring
+  key.size = data.string.len
   handleLoadConfig(key)
-
 
 proc handleCreateConfigCmd(args: openArray[string]) =
    var configName = args[1]
@@ -130,6 +129,28 @@ proc handleConfigCmd(configCmdArgs: openArray[string]) =
       else:
          globalHelpMsg()
 
+proc handleUpdateSettingCmd(args: openArray[string]) =
+   echo "Updating setting " & args[1] & " to " & args[2]
+   var name = args[1];
+   if name.contains("\""):
+      name = name.unescape
+   var value = args[2];
+   if value.contains("\""):
+      value = value.unescape
+   discard albinos.setSetting(currentConfig, name, value)
+
+proc handleSettingCmd(settingCmdArgs: openArray[string]) =
+   echo settingCmdArgs
+   case len(settingCmdArgs):
+      of 4:
+         case settingCmdArgs[1]:
+            of "update":
+               handleUpdateSettingCmd(settingCmdArgs[1..3])
+            else:
+               globalHelpMsg()
+      else:
+         globalHelpMsg()
+
 proc cliLoop(repl: ptr Replxx) =
    while true:
       var cline = replxx_input(repl, prompt);
@@ -148,6 +169,7 @@ proc cliLoop(repl: ptr Replxx) =
             continue
          of "clear": replxx_clear_screen(repl)
          of "config": handleConfigCmd(toOpenArray(args, 0, len(args) - 1))
+         of "setting": handleSettingCmd(toOpenArray(args, 0, len(args) - 1))
          else: globalHelpMsg()
 
 proc completionHook(input: cstring, completions: ptr replxx_completions,
