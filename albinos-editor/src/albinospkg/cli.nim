@@ -33,9 +33,10 @@ const
     "help_cmd_msg": "help (show this message)",
     "exit_cmd_msg": "exit (quitting the app)",
     "clear_cmd_msg": "clear (clear the screen)",
-    "config_create_cmd_msg": "config create <name> (create a config with the given name)"
+    "config_create_cmd_msg": "config create <name> (create a config with the given name)",
+    "config_create_cmd_msg": "config load <file> (load config from the key in the given file)"
    }.toTable
-let cmd_registry = @["help", "exit", "clear", "config create "]
+let cmd_registry = @["help", "exit", "clear", "config create ", "config load "]
 
 var msgTable = englishTable
 
@@ -73,8 +74,20 @@ proc yes(question: string): bool =
          of "n", "N", "no", "No": return false
          else: echo "Please be clear: yes or no, you wrote ", line, "."
 
-proc handleLoadConfigCmd() =
+proc handleLoadConfig(key : albinos.Key) =
    echo "Loading configuration"
+   discard getConfig(key, addr currentConfig)
+
+proc handleLoadConfigFromFileCmd(args: openArray[string]) =
+  let file = system.open(args[1])
+  let size = system.getFileSize(file).int
+  var data = system.new_seq[uint8](size)
+  discard system.readBytes(file, system.toOpenArray(data, 0, size), 0, size)
+  var key : albinos.Key
+  key.data = addr(data[0])
+  key.size = size
+  handleLoadConfig(key)
+
 
 proc handleCreateConfigCmd(args: openArray[string]) =
    var configName = args[1]
@@ -94,14 +107,14 @@ proc handleCreateConfigCmd(args: openArray[string]) =
                      $ cast[cstring](regularKey.data)
          styledEcho "Read only key: ", fgGreen, $ cast[cstring](
                      readOnlyKey.data)
+         if yes("Do you want to load the configuration: " & "\e[35m" & configName & "\e[39m" & " ?"):
+            handleLoadConfig(regularKey)
+         else:
+            styledEcho "Releasing configuration: ", fgMagenta, configName
+            releaseConfig(currentConfig)
       else:
          echo line
          return
-   if yes("Do you want to load the configuration: " & "\e[35m" & configName & "\e[39m" & " ?"):
-      handleLoadConfigCmd()
-   else:
-      styledEcho "Releasing configuration: ", fgMagenta, configName
-      releaseConfig(currentConfig)
 
 
 proc handleConfigCmd(configCmdArgs: openArray[string]) =
@@ -110,6 +123,8 @@ proc handleConfigCmd(configCmdArgs: openArray[string]) =
          case configCmdArgs[1]:
             of "create":
                handleCreateConfigCmd(configCmdArgs[1..2])
+            of "load":
+               handleLoadConfigFromFileCmd(configCmdArgs[1..2])
             else:
                globalHelpMsg()
       else:
