@@ -93,10 +93,8 @@ void Albinos::Config::initSocket()
 void Albinos::Config::sendJson(const json& data) const
 {
   std::string requestStr = data.dump();
-  char *buff = new char[requestStr.size()];
-  requestStr.copy(buff, requestStr.size());
-  socket->write(buff, requestStr.size());
-  delete buff;
+
+  socket->write(requestStr.data(), requestStr.size());
   socketLoop->run<uvw::Loop::Mode::ONCE>();
 }
 
@@ -131,13 +129,19 @@ Albinos::Config::Config(std::string const &name)
   request["CONFIG_NAME"] = name;
   request["REQUEST_NAME"] = "CONFIG_CREATE";
   sendJson(request);
+  if (irrecoverable.has_value())
+    throw LibError(*irrecoverable);
   loadConfig(*key);
+  if (irrecoverable.has_value())
+    throw LibError(*irrecoverable);
 }
 
 Albinos::Config::Config(Key const &givenKey)
 {
   initSocket();
   loadConfig(givenKey);
+  if (irrecoverable.has_value())
+    throw LibError(*irrecoverable);
 }
 
 Albinos::Config::Config(uint32_t configId)
