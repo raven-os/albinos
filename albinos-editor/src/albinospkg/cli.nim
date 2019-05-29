@@ -37,7 +37,8 @@ const
     "config_load_cmd_msg": "config load <file> (load config from the key in the given file)",
     "setting_update_cmd_msg": "setting update <name> <value> (update setting with the given name to the given value)"
    }.toTable
-let cmd_registry = @["help", "exit", "clear", "config create ", "config load ", "setting update "]
+let cmd_registry = @["help", "exit", "clear", "config create ",
+      "config load ", "setting update "]
 
 var msgTable = englishTable
 
@@ -60,7 +61,22 @@ proc globalHelpMsg() =
    printHL("<name>", substr = "name", col = if nocolor ==
          true: termwhite else: magenta)
    printLn(" (create a config with the given name)", bgr = bgDefault)
-
+   printBiCol("config load", colLeft = if nocolor ==
+         true: termwhite else: yellow, colRight = if nocolor ==
+         true: termwhite else: dodgerblue,
+         sep = " ", xpos = 8)
+   printHL("<file>", substr = "file", col = if nocolor ==
+         true: termwhite else: magenta)
+   printLn(" (load config from the key in the given file)", bgr = bgDefault)
+   printBiCol("setting update", colLeft = if nocolor ==
+         true: termwhite else: yellow, colRight = if nocolor ==
+         true: termwhite else: dodgerblue,
+         sep = " ", xpos = 8)
+   printHL("<name> ", substr = "name", col = if nocolor ==
+         true: termwhite else: magenta)
+   printHL("<value>", substr = "value", col = if nocolor ==
+         true: termwhite else: magenta)
+   printLn(" (update setting with the given name to the given value)", bgr = bgDefault)
 
 proc yes(question: string): bool =
    echo question, " (\e[93my\e[39m/\e[93mN\e[39m)"
@@ -75,24 +91,25 @@ proc yes(question: string): bool =
          of "n", "N", "no", "No": return false
          else: echo "Please be clear: yes or no, you wrote ", line, "."
 
-proc handleLoadConfig(key : albinos.Key) =
+proc handleLoadConfig(key: albinos.Key) =
    echo "Loading configuration"
    let err = albinos.getConfig(key, addr currentConfig)
-   if  err != albinos.SUCCESS:
+   if err != albinos.SUCCESS:
       echo "Failed to load configuration"
 
 proc handleLoadConfigFromFileCmd(args: openArray[string]) =
-  let data = readFile(args[1])
-  var key : albinos.Key
-  key.data = data.string.cstring
-  key.size = data.string.len
-  handleLoadConfig(key)
+   let data = readFile(args[1])
+   var key: albinos.Key
+   key.data = data.string.cstring
+   key.size = data.string.len
+   handleLoadConfig(key)
 
 proc handleCreateConfigCmd(args: openArray[string]) =
    var configName = args[1]
    if args[1].contains("\""):
       configName = configName.unescape
-   styledEcho "Creating configuration ", fgMagenta, configName, fgWhite, "..."
+   styledEcho "Creating configuration ", fgMagenta, configName, fgWhite,
+      "..."
    let (currentConfig, line) = createCfg(configName)
    case line:
       of ReturnedValue.SUCCESS:
@@ -101,12 +118,14 @@ proc handleCreateConfigCmd(args: openArray[string]) =
             readOnlyKey: albinos.Key
          discard getConfigKey(currentConfig, addr regularKey)
          discard getReadOnlyConfigKey(currentConfig, addr readOnlyKey)
-         styledEcho "Successfuly created configuration ", fgMagenta, configName, fgWhite
+         styledEcho "Successfuly created configuration ", fgMagenta,
+            configName, fgWhite
          styledEcho "Regular key: ", fgGreen,
                      $ cast[cstring](regularKey.data)
          styledEcho "Read only key: ", fgGreen, $ cast[cstring](
                      readOnlyKey.data)
-         if yes("Do you want to load the configuration: " & "\e[35m" & configName & "\e[39m" & " ?"):
+         if yes("Do you want to load the configuration: " & "\e[35m" &
+               configName & "\e[39m" & " ?"):
             handleLoadConfig(regularKey)
          else:
             styledEcho "Releasing configuration: ", fgMagenta, configName
