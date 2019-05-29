@@ -7,7 +7,7 @@ Raven-OS' configuration unification service and library.
 ```bash
 mkdir -p build/<build_type>
 cd build/<build_type>
-cmake ../.. -DCMAKE_BUILD_TYPE=<BuildType> # cmake wants a CamelCase value, so "Debug" for debug, "Release" for release etc.
+cmake ../.. -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=<BuildType> # cmake wants a CamelCase value, so "Debug" for debug, "Release" for release etc.
 make
 sudo make install
 cd -
