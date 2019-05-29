@@ -47,7 +47,7 @@ void Albinos::Config::parseResponse(json const &data)
   }
 
   try {
-    settingNames.reset(new std::vector<std::string>(std::move(data.at("SETTINGS_NAME").get<std::vector<std::string>>())));
+    settingNames.reset(new std::vector<std::string>(std::move(data.at("SETTINGS_NAMES").get<std::vector<std::string>>())));
 
     return;
   } catch (...) {
