@@ -25,6 +25,14 @@ To run the service, use:
 
 First you need to install nimble.
 
+You can use **choosenim** for installing nim environment:
+
+```bash
+curl https://nim-lang.org/choosenim/init.sh -sSf | sh
+choosenim update devel #use development nim version
+choosenim devel #switch to devel version
+```
+
 Then you should:
 ```bash
 nimble build
