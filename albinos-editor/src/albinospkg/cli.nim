@@ -179,7 +179,8 @@ proc cliLoop(repl: ptr Replxx) =
       let line = $cline
       if line.len == 0 or isSpaceAscii(line):
          continue
-      let args = line.unindent.splitWhitespace
+      let args = line.unindent.parseCmdLine
+      echo args
       replxx_history_add(repl, cline)
       case args[0]:
          of "exit": break
