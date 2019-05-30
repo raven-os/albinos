@@ -229,7 +229,7 @@ proc launchCLI*(configFilename = "") =
    if configFilename.len > 0:
       var inputStrings = newSeq[string](2)
       inputStrings[1] = configFilename
-      handleCreateConfigCmd(toOpenArray(inputStrings, 0, len(inputStrings) - 1))
+      handleLoadConfigFromFileCmd(toOpenArray(inputStrings, 0, len(inputStrings) - 1))
    var repl = replxx_init()
    discard replxx_install_window_change_handler(repl)
    discard replxx_history_load(repl, history_file)
