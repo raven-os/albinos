@@ -6,6 +6,7 @@
 void Albinos::Config::parseResponse(json const &data)
 {
   std::string status;
+
   try {
     status = data.at("REQUEST_STATE").get<std::string>();
   } catch (...) {
@@ -28,6 +29,7 @@ void Albinos::Config::parseResponse(json const &data)
     lastRequestedValue = data.at("SETTING_VALUE").get<std::string>();
     return;
   } catch (...) {
+    lastRequestedValue = "";
   }
 
   try {
