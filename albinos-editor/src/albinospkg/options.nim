@@ -6,7 +6,7 @@ albinos_editor
 Usage:
     albinos_editor (-h | --help)
     albinos_editor config create <name>
-    albinos_editor --cli
+    albinos_editor --cli [--with_config=<config_file>]
     albinos_editor --gui
 
 Options:

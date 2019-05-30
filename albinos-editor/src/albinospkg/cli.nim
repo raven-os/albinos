@@ -76,7 +76,8 @@ proc globalHelpMsg() =
          true: termwhite else: magenta)
    printHL("<value>", substr = "value", col = if nocolor ==
          true: termwhite else: magenta)
-   printLn(" (update setting with the given name to the given value)", bgr = bgDefault)
+   printLn(" (update setting with the given name to the given value)",
+         bgr = bgDefault)
 
 proc yes(question: string): bool =
    echo question, " (\e[93my\e[39m/\e[93mN\e[39m)"
@@ -224,7 +225,11 @@ proc highlighterHook(input: cstring, colors: ptr ReplxxColor,
          for i in m.boundaries.a .. m.boundaries.b:
             (colors + i)[] = currentColor
 
-proc launchCLI*() =
+proc launchCLI*(configFilename = "") =
+   if configFilename.len > 0:
+      var inputStrings = newSeq[string](2)
+      inputStrings[1] = configFilename
+      handleCreateConfigCmd(toOpenArray(inputStrings, 0, len(inputStrings) - 1))
    var repl = replxx_init()
    discard replxx_install_window_change_handler(repl)
    discard replxx_history_load(repl, history_file)

@@ -9,7 +9,10 @@ when isMainModule:
     if args["config"]:
         echo "config options invoked"
     elif args["--cli"]:
-        launchCLI()
+        if args["--with_config"]:
+            launchCLI($args["--with_config"])
+        else:
+            launchCLI()
     elif args["--gui"]:
         styledEcho(fgCyan, "Launching GUI")
         launchGUI()
