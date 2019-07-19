@@ -266,13 +266,16 @@ Albinos::ReturnedValue Albinos::Config::unsetAlias(char const *aliasName)
 }
 
 ///
-/// \todo implementation
+/// \todo handle error
 ///
 Albinos::ReturnedValue Albinos::Config::removeSetting(char const *name)
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
-  (void)name;
+  json request;
+  request["REQUEST_NAME"] = "SETTING_REMOVE";
+  request["SETTING_NAME"] = name;
+  sendJson(request);
   return SUCCESS;
 }
 
