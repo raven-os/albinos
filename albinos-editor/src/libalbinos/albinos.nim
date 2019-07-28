@@ -7,6 +7,9 @@
 when defined(linux):
   const
     albinosdll* = "libalbinos.so"
+when defined(MacOSX):
+  const
+    albinosdll* = "libalbinos.dylib"
 ## /
 ## / \brief contain all possible returned values for the API
 ## /

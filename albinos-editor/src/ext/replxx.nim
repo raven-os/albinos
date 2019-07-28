@@ -37,6 +37,9 @@
 when defined(linux):
   const
     replxxdll* = "libreplxx.so"
+when defined(MacOSX):
+  const
+    replxxdll* = "libreplxx.dylib"
 const
   REPLXX_VERSION* = "0.0.2"
   REPLXX_VERSION_MAJOR* = 0

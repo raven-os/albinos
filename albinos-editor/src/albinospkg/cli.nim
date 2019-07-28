@@ -44,7 +44,7 @@ var msgTable = englishTable
 
 proc globalHelpMsg() =
    var nocolor: bool = false
-   println(msgTable["usage"], bgr = bgDefault)
+   #println(msgTable["usage"], bgr = bgDefault)
    printLnBiCol(msgTable["help_cmd_msg"],
          colLeft = if nocolor == true: termwhite else: yellow,
       colRight = termwhite, sep = " ", xpos = 8)
@@ -60,14 +60,14 @@ proc globalHelpMsg() =
          sep = " ", xpos = 8)
    printHL("<name>", substr = "name", col = if nocolor ==
          true: termwhite else: magenta)
-   printLn(" (create a config with the given name)", bgr = bgDefault)
+  # printLn(" (create a config with the given name)", bgr = bgDefault)
    printBiCol("config load", colLeft = if nocolor ==
          true: termwhite else: yellow, colRight = if nocolor ==
          true: termwhite else: dodgerblue,
          sep = " ", xpos = 8)
    printHL("<file>", substr = "file", col = if nocolor ==
          true: termwhite else: magenta)
-   printLn(" (load config from the key in the given file)", bgr = bgDefault)
+   #printLn(" (load config from the key in the given file)", bgr = bgDefault)
    printBiCol("setting update", colLeft = if nocolor ==
          true: termwhite else: yellow, colRight = if nocolor ==
          true: termwhite else: dodgerblue,
@@ -76,8 +76,8 @@ proc globalHelpMsg() =
          true: termwhite else: magenta)
    printHL("<value>", substr = "value", col = if nocolor ==
          true: termwhite else: magenta)
-   printLn(" (update setting with the given name to the given value)",
-         bgr = bgDefault)
+   #printLn(" (update setting with the given name to the given value)",
+   #      bgr = bgDefault)
 
 proc yes(question: string): bool =
    echo question, " (\e[93my\e[39m/\e[93mN\e[39m)"
