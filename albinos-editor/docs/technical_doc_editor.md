@@ -40,4 +40,4 @@ nimble test
 The albinos configuration editor works in a complementary way with `albinos daemon service`.
 
 The albinos editor binary comes with a dynamic library containing albinos API functionality,
-This way when a client enters a command the function is directly called from the `DLL`.
+This way when a client enters a command the function is directly called from the `dynamic library`.
