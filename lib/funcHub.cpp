@@ -164,7 +164,7 @@ Albinos::ReturnedValue Albinos::subscribeToSetting(Config *config, char const *n
   }
 }
 
-Albinos::ReturnedValue Albinos::getDependencies(Config const *config, Config **deps, size_t *size)
+Albinos::ReturnedValue Albinos::getDependencies(Config const *config, Config ***deps, size_t *size)
 {
   if (!config || !deps || !size)
     return BAD_PARAMETERS;
@@ -175,10 +175,12 @@ Albinos::ReturnedValue Albinos::getDependencies(Config const *config, Config **d
   }
 }
 
-void Albinos::destroyDependenciesArray(Config *deps, size_t size)
+void Albinos::destroyDependenciesArray(Config **deps, size_t size)
 {
   if (!deps)
     return;
+  for (unsigned i = 0 ; i < size ; ++i)
+    delete deps[i];
   delete[] deps;
 }
 
