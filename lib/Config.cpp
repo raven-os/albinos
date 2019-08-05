@@ -33,6 +33,13 @@ void Albinos::Config::parseResponse(json const &data)
   }
 
   try {
+    depsIds = data.at("DEPS").get<std::vector<uint32_t>>();
+    return;
+  } catch (...) {
+    lastRequestedValue.clear();
+  }
+
+  try {
     name = data.at("CONFIG_NAME").get<std::string>();
     configId = data.at("CONFIG_ID").get<uint32_t>();
     return;
@@ -323,12 +330,17 @@ Albinos::ReturnedValue Albinos::Config::subscribeToSetting(char const *settingNa
 ///
 /// \todo implementation
 ///
-Albinos::ReturnedValue Albinos::Config::getDependencies(Config **deps, size_t *size) const
+Albinos::ReturnedValue Albinos::Config::getDependencies(Config ***deps, size_t *size) const
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
-  (void)deps;
-  (void)size;
+  json request;
+  request["REQUEST_NAME"] = "CONFIG_GET_DEPS";
+  sendJson(request);
+  *size = depsIds.size();
+  *deps = new Config* [*size];
+  for (unsigned i = 0 ; i < *size ; ++i)
+    (*deps)[i] = new Config(depsIds[i]);
   return SUCCESS;
 }
 

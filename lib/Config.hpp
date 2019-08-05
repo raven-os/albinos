@@ -33,6 +33,8 @@ namespace Albinos
 
     std::optional<std::string> name;
     uint32_t configId;
+    std::vector<uint32_t> depsIds;
+
     std::string lastRequestedValue;
     std::map<std::string, Subscription*> settingsSubscriptions;
     std::vector<SettingUpdatedData> settingsUpdates;
@@ -74,7 +76,7 @@ namespace Albinos
     ReturnedValue include(Key *inheritFrom, int position);
     ReturnedValue uninclude(Key *otherConfig, int position);
 
-    ReturnedValue getDependencies(Config **deps, size_t *size) const;
+    ReturnedValue getDependencies(Config ***deps, size_t *size) const;
     ReturnedValue getLocalSettings(Setting **settings, size_t *size) const;
     ReturnedValue getLocalSettingsNames(char const * const **names) const;
     ReturnedValue getLocalAliases(Alias **aliases, size_t *size) const;

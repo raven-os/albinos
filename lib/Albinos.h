@@ -240,14 +240,14 @@ namespace Albinos
     /// \param 'size' size of the 'deps' array
     /// \return error code
     ///
-    enum ReturnedValue getDependencies(struct Config const*, struct Config **deps, size_t *size);
+    enum ReturnedValue getDependencies(struct Config const*, struct Config ***deps, size_t *size);
 
     ///
     /// \brief destroy a dependencies array obtained with 'getDependencies'
     /// \param 'deps' array to destroy
     /// \param 'size' size of the 'deps' array
     ///
-    void destroyDependenciesArray(struct Config *deps, size_t size);
+    void destroyDependenciesArray(struct Config **deps, size_t size);
 
     ///
     /// \brief get the ordered list of all local settings
