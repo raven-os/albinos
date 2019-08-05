@@ -328,7 +328,7 @@ Albinos::ReturnedValue Albinos::Config::subscribeToSetting(char const *settingNa
 }
 
 ///
-/// \todo implementation
+/// \todo get errors
 ///
 Albinos::ReturnedValue Albinos::Config::getDependencies(Config ***deps, size_t *size) const
 {
@@ -393,12 +393,16 @@ Albinos::ReturnedValue Albinos::Config::getLocalAliases(Alias **aliases, size_t 
 }
 
 ///
-/// \todo implementation
+/// \todo error management
 ///
 Albinos::ReturnedValue Albinos::Config::deleteConfig() const
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
+  json request;
+  request["REQUEST_NAME"] = "CONFIG_DESTROY";
+  request["CONFIG_ID"] = configId;
+  sendJson(request);
   return SUCCESS;
 }
 
