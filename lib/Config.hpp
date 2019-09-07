@@ -1,4 +1,6 @@
 ///
+/// \file Config.hpp
+/// \author albinos-team
 /// \date 14/10/2018
 /// \brief main struct, represent a configuration
 /// \bug

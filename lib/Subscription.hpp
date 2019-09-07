@@ -1,4 +1,6 @@
 ///
+/// \file Subscription.hpp
+/// \author albinos-team
 /// \date 14/10/2018
 /// \brief allow the user to manage his callbacks
 /// \bug
