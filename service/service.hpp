@@ -53,12 +53,14 @@ namespace raven
                 DVLOG_F(loguru::Verbosity_INFO, "unload every config for the client -> %d",
                         static_cast<int>(sock.fileno()));
                 for (size_t i = 1; i <= this->config_clients_registry_.at(sock.fileno()).get_last_id().value(); ++i) {
-                    config_id_st db_id = this->config_clients_registry_.at(sock.fileno()).get_db_id_from(config_id_st{i});
-                    load_ref_counter_[db_id.value()] -= 1;
-                    if (load_ref_counter_.at(db_id.value()) <= 0) {
-                        db_.update_config(loaded_configs_.at(db_id.value()), db_id);
-                        loaded_configs_.erase(db_id.value());
-                        load_ref_counter_.erase(db_id.value());
+                    if (this->config_clients_registry_.at(sock.fileno()).has_loaded(config_id_st{i})) {
+                      config_id_st db_id = this->config_clients_registry_.at(sock.fileno()).get_db_id_from(config_id_st{i});
+                      load_ref_counter_[db_id.value()] -= 1;
+                      if (load_ref_counter_.at(db_id.value()) <= 0) {
+                          db_.update_config(loaded_configs_.at(db_id.value()), db_id);
+                          loaded_configs_.erase(db_id.value());
+                          load_ref_counter_.erase(db_id.value());
+                      }
                     }
                 }
                 this->config_clients_registry_.erase(sock.fileno());
@@ -244,6 +246,11 @@ namespace raven
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<config_unload>(json_data);
+        if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id))
+        {
+          send_answer(sock, request_state::unknown_id);
+          return ;
+        }
         config_id_st db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
         config_clients_registry_.at(sock.fileno()).remove_temp_id(cfg.id);
         load_ref_counter_[db_id.value()] -= 1;
@@ -252,8 +259,10 @@ namespace raven
             loaded_configs_.erase(db_id.value());
             load_ref_counter_.erase(db_id.value());
         }
-        //TODO Check and log db errors...
-        send_answer(sock);
+        if (db_.fail())
+          send_answer(sock, request_state::internal_error);
+        else
+          send_answer(sock);
     }
 
     void include_config(json::json &json_data, uvw::PipeHandle &sock)
@@ -272,12 +281,20 @@ namespace raven
         
         config_id_st db_id_to_include = config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id});
 
+        /*
         auto config_json_data = db_.get_config(config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id}));
         if (db_.fail()) {
             send_answer(sock, request_state::db_error);
             return ;
         }
+        */
+        auto &config_json_data = loaded_configs_.at(cfg.id.value());
         config_json_data[config_includes_field_keyword].push_back(db_id_to_include.value());
+
+        /*
+        update config
+        */
+
         send_answer(sock, request_state::success);
     }
 
@@ -294,21 +311,28 @@ namespace raven
 
         auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
 
+        /*
         auto config_json_data = db_.get_config(db_id);
         if (db_.fail()) {
             send_answer(sock, request_state::db_error);
             return ;
         }
+         */
+
+        auto &config_json_data = loaded_configs_.at(cfg.id.value());
 
         for (auto &[key, value] : cfg.settings_to_update.items()) {
             config_json_data[config_settings_field_keyword][key] = value;
         }
         DLOG_F(INFO, "config after update: %s", config_json_data.dump().c_str());
+
+        /*
         db_.update_config(config_json_data, db_id);
         if (db_.fail()) {
             send_answer(sock, request_state::db_error);
             return ;
         }
+         */
 
         send_answer(sock, request_state::success);
         // TODO : lookup de la db pour associer l'id temporaire du client qui a update au vrai id dans la db puis retrouver l'id temporaire du client courant dans la loop associer a ce vrai id
@@ -339,6 +363,10 @@ namespace raven
         if (!config_clients_registry_.at(sock.fileno()).has_loaded(cfg.id))
             return ;
         auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+
+        auto &config_json_data = loaded_configs_.at(cfg.id.value());
+        config_json_data[config_settings_field_keyword].erase(cfg.setting_name);
+
         for (auto &[fileno, client] : config_clients_registry_)
         {
             if (client.is_subscribed(db_id, cfg.setting_name)) {
@@ -360,11 +388,15 @@ namespace raven
             send_answer(sock, request_state::unknown_id);
             return ;
         }
+        /*
         auto config_json_data = db_.get_config(config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id}));
         if (db_.fail()) {
             send_answer(sock, request_state::db_error);
             return ;
         }
+         */
+        const auto &config_json_data = loaded_configs_.at(cfg.id.value());
+
         setting_get_answer answer;
         try {
             answer.setting_value = config_json_data[config_settings_field_keyword].at(cfg.setting_name);
@@ -386,11 +418,15 @@ namespace raven
             send_answer(sock, request_state::unknown_id);
             return ;
         }
+        /*
         auto config_json_data = db_.get_config(config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id}));
         if (db_.fail()) {
             send_answer(sock, request_state::db_error);
             return ;
         }
+         */
+        const auto &config_json_data = loaded_configs_.at(cfg.id.value());
+
         json::json settings_name;
         for (auto &[key, value] : config_json_data[config_settings_field_keyword].items()) {
             settings_name.push_back(key);
@@ -408,11 +444,15 @@ namespace raven
             send_answer(sock, request_state::unknown_id);
             return ;
         }
+        /*
         auto config_json_data = db_.get_config(config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id}));
         if (db_.fail()) {
             send_answer(sock, request_state::db_error);
             return ;
         }
+         */
+        const auto &config_json_data = loaded_configs_.at(cfg.id.value());
+
         config_get_settings_answer answer{config_json_data[config_settings_field_keyword], convert_request_state.at(request_state::success)};
         send_answer(sock, answer);
     }
@@ -690,9 +730,80 @@ namespace raven
 
     TEST_CASE_CLASS ("unload_config request")
     {
-        auto data = R"({"REQUEST_NAME": "CONFIG_UNLOAD","CONFIG_ID": 42})"_json;
-        auto answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
-        test_client_server_communication(std::move(data), std::move(answer));
+        SUBCASE ("unload_config request with unknown config_key") {
+            auto data = R"({"REQUEST_NAME": "CONFIG_UNLOAD","CONFIG_ID": 42})"_json;
+            auto answer = R"({"REQUEST_STATE":"UNKNOWN_ID"})"_json;
+            test_client_server_communication(std::move(data), std::move(answer));
+        };
+
+        SUBCASE ("unload_config request with known config_key") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+            request_load["CONFIG_KEY"] = answer_create.config_key.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+
+            client->once<uvw::ConnectEvent>([&request_load](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+                    CHECK(handle.writable());
+                    CHECK(handle.readable());
+                auto request_str = request_load.dump();
+                handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                handle.read();
+            });
+
+            client->on<uvw::DataEvent>(
+                [&expected_answer, &service_](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                    static int step = 0;
+                    static size_t id = 0;
+                    std::string_view data_str(data.data.get(), data.length);
+                    auto json_data = json::json::parse(data_str);
+                    auto json_data_str = json_data.dump();
+                    switch (step)
+                    {
+                        case 0:// load config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_UNLOAD","CONFIG_ID": 42})"_json;
+                            id = json_data.at("CONFIG_ID").get<std::size_t>();
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            //expected answer unchanged.
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 1: // unload config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_UNLOAD","CONFIG_ID": 42})"_json;
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 2: // unload invalid config
+                        {
+                            expected_answer = R"({"REQUEST_STATE" : "UNKNOWN_ID"})"_json;
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            sock.close();
+                            break;
+                        }
+                    }
+                    step += 1;
+                });
+
+            client->connect(service_.socket_path_.string());
+            test_run_and_clean_client(service_, loop);
+        };
+
     }
 
     TEST_CASE_CLASS ("include_config request")
@@ -786,7 +897,7 @@ namespace raven
                         case 1: // update setting
                             CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
                                   expected_answer.at("REQUEST_STATE").get<std::string>());
-                            auto config_json_data = service_.db_.get_config(config_id_st{id});
+                            auto &config_json_data = service_.loaded_configs_.at(id);
                             auto setting = config_json_data["SETTINGS"].find("foo");
                             CHECK_NE(setting, config_json_data["SETTINGS"].end());
                             CHECK_EQ(setting.value(), "bar");
@@ -844,7 +955,7 @@ namespace raven
                         case 1: // update setting
                             CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
                                   expected_answer.at("REQUEST_STATE").get<std::string>());
-                            auto config_json_data = service_.db_.get_config(config_id_st{id});
+                            auto &config_json_data = service_.loaded_configs_.at(id);
                             auto setting = config_json_data["SETTINGS"].find("foo");
                             CHECK_NE(setting, config_json_data["SETTINGS"].end());
                             CHECK_EQ(setting.value(), "bar");
