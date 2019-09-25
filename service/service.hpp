@@ -215,19 +215,30 @@ namespace raven
             return ;
         }
 
-        config_id_st temp_id = config_clients_registry_.at(sock.fileno()).insert_db_id(id);
-        // TODO get permision for the key and store it with the id
-        // TODO add ref_counting
-        // TODO get full config in cache
-        send_answer(sock, config_load_answer{name, temp_id, convert_request_state.at(request_state::success)});
+        if (!config_clients_registry_.at(sock.fileno()).has_loaded_db_id(id)) {
+            config_id_st temp_id = config_clients_registry_.at(sock.fileno()).insert_db_id(id);
+            // TODO get permision for the key and store it with the id
+            if (load_ref_counter_.find(id.value()) != load_ref_counter_.end()) {
+                load_ref_counter_[id.value()] +=  1;
+            } else {
+                load_ref_counter_[id.value()] = 0;
+                // TODO get full config in cache
+            }
+            send_answer(sock, config_load_answer{name, temp_id, convert_request_state.at(request_state::success)});
+        } else {
+            config_id_st temp_id = config_clients_registry_.at(sock.fileno()).get_id_from_db(id);
+            send_answer(sock, config_load_answer{name, temp_id, convert_request_state.at(request_state::success)});
+        }
     }
 
     void unload_config(json::json &json_data, uvw::PipeHandle &sock)
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<config_unload>(json_data);
-        auto &config_ids = config_clients_registry_.at(sock.fileno());
-        config_ids.remove_temp_id(cfg.id);
+        config_id_st db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+        config_clients_registry_.at(sock.fileno()).remove_temp_id(cfg.id);
+        load_ref_counter_[db_id.value()] -= 1;
+        // TODO if ref counter = 0 unload the conf
         send_answer(sock);
     }
 
@@ -457,6 +468,7 @@ namespace raven
     std::shared_ptr<uvw::PipeHandle> server_{uv_loop_->resource<uvw::PipeHandle>()};
     std::filesystem::path socket_path_{(std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock")};
     std::unordered_map<uvw::OSFileDescriptor::Type, raven::client> config_clients_registry_;
+    std::unordered_map<config_id_st::value_type, unsigned int> load_ref_counter_;
     config_db db_;
     bool error_occurred{false};
     const std::unordered_map<std::string, std::function<void(json::json &, uvw::PipeHandle &)>>
