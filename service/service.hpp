@@ -221,8 +221,8 @@ namespace raven
             if (load_ref_counter_.find(id.value()) != load_ref_counter_.end()) {
                 load_ref_counter_[id.value()] +=  1;
             } else {
-                load_ref_counter_[id.value()] = 0;
-                // TODO get full config in cache
+                load_ref_counter_.insert({id.value(), 1});
+                loaded_configs_.insert({id.value(), db_.get_config(id)});
             }
             send_answer(sock, config_load_answer{name, temp_id, convert_request_state.at(request_state::success)});
         } else {
@@ -238,7 +238,12 @@ namespace raven
         config_id_st db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
         config_clients_registry_.at(sock.fileno()).remove_temp_id(cfg.id);
         load_ref_counter_[db_id.value()] -= 1;
-        // TODO if ref counter = 0 unload the conf
+        if (load_ref_counter_.at(db_id.value()) <= 0) {
+            db_.update_config(loaded_configs_.at(db_id.value()), db_id);
+            loaded_configs_.erase(loaded_configs_.find(db_id.value()));
+            load_ref_counter_.erase(load_ref_counter_.find(db_id.value()));
+        }
+        //TODO Check and log db errors...
         send_answer(sock);
     }
 
@@ -469,6 +474,7 @@ namespace raven
     std::filesystem::path socket_path_{(std::filesystem::temp_directory_path() / "raven-os_service_albinos.sock")};
     std::unordered_map<uvw::OSFileDescriptor::Type, raven::client> config_clients_registry_;
     std::unordered_map<config_id_st::value_type, unsigned int> load_ref_counter_;
+    std::unordered_map<config_id_st::value_type, json::json> loaded_configs_;
     config_db db_;
     bool error_occurred{false};
     const std::unordered_map<std::string, std::function<void(json::json &, uvw::PipeHandle &)>>
