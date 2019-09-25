@@ -52,6 +52,15 @@ namespace raven
                 //! Since the client will disconnect, we unload every config related to him
                 DVLOG_F(loguru::Verbosity_INFO, "unload every config for the client -> %d",
                         static_cast<int>(sock.fileno()));
+                for (size_t i = 1; i <= this->config_clients_registry_.at(sock.fileno()).get_last_id().value(); ++i) {
+                    config_id_st db_id = this->config_clients_registry_.at(sock.fileno()).get_db_id_from(config_id_st{i});
+                    load_ref_counter_[db_id.value()] -= 1;
+                    if (load_ref_counter_.at(db_id.value()) <= 0) {
+                        db_.update_config(loaded_configs_.at(db_id.value()), db_id);
+                        loaded_configs_.erase(db_id.value());
+                        load_ref_counter_.erase(db_id.value());
+                    }
+                }
                 this->config_clients_registry_.erase(sock.fileno());
                 sock.close();
             });
@@ -240,8 +249,8 @@ namespace raven
         load_ref_counter_[db_id.value()] -= 1;
         if (load_ref_counter_.at(db_id.value()) <= 0) {
             db_.update_config(loaded_configs_.at(db_id.value()), db_id);
-            loaded_configs_.erase(loaded_configs_.find(db_id.value()));
-            load_ref_counter_.erase(load_ref_counter_.find(db_id.value()));
+            loaded_configs_.erase(db_id.value());
+            load_ref_counter_.erase(db_id.value());
         }
         //TODO Check and log db errors...
         send_answer(sock);
