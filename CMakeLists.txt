@@ -42,11 +42,11 @@ target_include_directories(uvw INTERFACE ${uvw_SOURCE_DIR}/src ${uvw_SOURCE_DIR}
 add_library(albinos::uvw ALIAS uvw)
 ###
 
-add_executable(service ${SOURCES_SERVICE})
+add_executable(albinos-service ${SOURCES_SERVICE})
 find_library(sqlite3_lib NAMES sqlite3)
-target_link_libraries(service PUBLIC albinos::uvw ${sqlite3_lib} stdc++fs)
-target_sources(service PRIVATE vendor/loguru/loguru.cpp)
-target_include_directories(service PUBLIC vendor/json/single_include/nlohmann vendor/sql/hdr vendor/doctest/doctest vendor/strong_type/include/ vendor/expected vendor/loguru)
+target_link_libraries(albinos-service PUBLIC albinos::uvw ${sqlite3_lib} stdc++fs)
+target_sources(albinos-service PRIVATE vendor/loguru/loguru.cpp)
+target_include_directories(albinos-service PUBLIC vendor/json/single_include/nlohmann vendor/sql/hdr vendor/doctest/doctest vendor/strong_type/include/ vendor/expected vendor/loguru)
 add_library(${PROJECT_NAME} SHARED ${SOURCES_LIB})
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(${PROJECT_NAME} albinos::uvw stdc++fs)
@@ -55,3 +55,5 @@ add_subdirectory(tests)
 
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)
 install(FILES lib/Albinos.h DESTINATION include)
+install(TARGETS albinos-service RUNTIME DESTINATION /usr/local/bin)
+install(FILES service/albinos.service DESTINATION /etc/systemd/system)

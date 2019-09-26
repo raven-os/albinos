@@ -1,0 +1,11 @@
+[Unit]
+Description=Raven-os albinos service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+ExecStart=/usr/local/bin/albinos-service
+
+[Install]
+WantedBy=multi-user.target
