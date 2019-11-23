@@ -53,6 +53,12 @@ target_link_libraries(${PROJECT_NAME} albinos::uvw stdc++fs)
 target_include_directories(${PROJECT_NAME} PUBLIC vendor/uvw/src vendor/uvw/deps/libuv/include vendor/json/single_include/nlohmann)
 add_subdirectory(tests)
 
+add_executable(${PROJECT_NAME}_integ_test)
+target_sources(${PROJECT_NAME}_integ_test PRIVATE ${SOURCES_LIB})
+target_include_directories(${PROJECT_NAME}_integ_test PUBLIC vendor/uvw/src vendor/uvw/deps/libuv/include vendor/json/single_include/nlohmann vendor/doctest/doctest)
+target_link_libraries(${PROJECT_NAME}_integ_test PUBLIC albinos::uvw stdc++fs)
+
+
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)
 install(FILES lib/Albinos.h DESTINATION include)
 install(TARGETS albinos-service RUNTIME DESTINATION /usr/local/bin)
