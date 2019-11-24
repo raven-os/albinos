@@ -23,7 +23,12 @@ TEST_CASE("All case")
     std::string str("key is: [ " + std::string(key.data) + " ]");
     MESSAGE(str);
     CHECK(not std::string(key.data).empty());
-    CHECK_GT(key.size, 0);
+    WARN_GT(key.size, 0);
+
+
+    //! Set setting
+    CHECK_EQ(Albinos::setSetting(ptr, "foo", "bar"), Albinos::SUCCESS);
+
 
     //! Readonly key
     Albinos::Key readonly_key;
@@ -31,7 +36,7 @@ TEST_CASE("All case")
     std::string readonly_key_str("key is: [ " + std::string(readonly_key.data) + " ]");
     MESSAGE(readonly_key_str);
     CHECK(not std::string(readonly_key.data).empty());
-    CHECK_GT(readonly_key.size, 0);
+    WARN_GT(readonly_key.size, 0);
 
     //! Destruction config
     CHECK_EQ(Albinos::destroyConfig(ptr), Albinos::SUCCESS);
