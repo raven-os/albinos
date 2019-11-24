@@ -29,6 +29,17 @@ TEST_CASE("All case")
     //! Set setting
     CHECK_EQ(Albinos::setSetting(ptr, "foo", "bar"), Albinos::SUCCESS);
 
+    //! Get setting size
+    std::size_t foo_setting_size;
+    CHECK_EQ(Albinos::getSettingSize(ptr, "foo", &foo_setting_size), Albinos::SUCCESS);
+    CHECK_EQ(foo_setting_size, 3ull);
+
+    //! Get setting value
+    std::string foo_setting_value;
+    foo_setting_value.resize(foo_setting_size);
+    CHECK_EQ(Albinos::getSettingValue(ptr, "foo", foo_setting_value.data(), foo_setting_size), Albinos::SUCCESS);
+    CHECK_EQ(foo_setting_value, "bar");
+
 
     //! Readonly key
     Albinos::Key readonly_key;
