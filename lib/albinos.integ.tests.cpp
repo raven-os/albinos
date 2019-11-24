@@ -11,8 +11,10 @@
 //! All the tests need the service to be launched
 TEST_CASE("All case")
 {
+    Albinos::Config cfg_to_retrieve = Albinos::Config("None");
     Albinos::Config albinos_cfg = Albinos::Config("foo");
     Albinos::Config* ptr = &albinos_cfg;
+    Albinos::Config* retrieve_ptr = &cfg_to_retrieve;
 
     //! Creation config
     CHECK_EQ(Albinos::createConfig("toto", &ptr), Albinos::SUCCESS);
@@ -48,6 +50,8 @@ TEST_CASE("All case")
     MESSAGE(readonly_key_str);
     CHECK(not std::string(readonly_key.data).empty());
     WARN_GT(readonly_key.size, 0);
+
+    CHECK_EQ(Albinos::getConfig(key, &retrieve_ptr), Albinos::SUCCESS);
 
     //! Destruction config
     CHECK_EQ(Albinos::destroyConfig(ptr), Albinos::SUCCESS);
