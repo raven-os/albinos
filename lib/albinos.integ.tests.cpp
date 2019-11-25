@@ -29,18 +29,18 @@ TEST_CASE("All case")
 
 
     //! Set setting
-    CHECK_EQ(Albinos::setSetting(ptr, "foo", "bar"), Albinos::SUCCESS);
+    CHECK_EQ(Albinos::setSetting(ptr, "foo", "42bar"), Albinos::SUCCESS);
 
     //! Get setting size
     std::size_t foo_setting_size;
     CHECK_EQ(Albinos::getSettingSize(ptr, "foo", &foo_setting_size), Albinos::SUCCESS);
-    CHECK_EQ(foo_setting_size, 3ull);
+    CHECK_EQ(foo_setting_size, 5ull);
 
     //! Get setting value
     std::string foo_setting_value;
     foo_setting_value.resize(foo_setting_size);
     CHECK_EQ(Albinos::getSettingValue(ptr, "foo", foo_setting_value.data(), foo_setting_size), Albinos::SUCCESS);
-    CHECK_EQ(foo_setting_value, "bar");
+    CHECK_EQ(foo_setting_value, "42bar");
 
 
     //! Readonly key
@@ -53,6 +53,6 @@ TEST_CASE("All case")
 
     CHECK_EQ(Albinos::getConfig(key, &retrieve_ptr), Albinos::SUCCESS);
 
-    //! Destruction config
+    //! Config Destruction
     CHECK_EQ(Albinos::destroyConfig(ptr), Albinos::SUCCESS);
 }
