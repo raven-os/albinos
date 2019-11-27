@@ -109,23 +109,12 @@ Albinos::ReturnedValue Albinos::removeSetting(Config *config, char const *name)
   }
 }
 
-Albinos::ReturnedValue Albinos::getSettingValue(Config const *config, char const *settingName, char *value, size_t valueSize)
+Albinos::ReturnedValue Albinos::getSettingValue(Config const *config, char const *settingName, char **value)
 {
   if (!config || !settingName || !value)
     return BAD_PARAMETERS;
   try {
-    return config->getSettingValue(settingName, value, valueSize);
-  } catch (LibError const &e) {
-    return e.getCode();
-  }
-}
-
-Albinos::ReturnedValue Albinos::getSettingSize(Config const *config, char const *settingName, size_t *size)
-{
-  if (!config || !settingName || !size)
-    return BAD_PARAMETERS;
-  try {
-    return config->getSettingSize(settingName, size);
+    return config->getSettingValue(settingName, value);
   } catch (LibError const &e) {
     return e.getCode();
   }

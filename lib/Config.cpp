@@ -191,7 +191,7 @@ Albinos::ReturnedValue Albinos::Config::getReadOnlyKey(Key *configKey) const
 ///
 /// \todo handle error
 ///
-Albinos::ReturnedValue Albinos::Config::getSettingValue(char const *settingName, char *value, size_t valueSize) const
+Albinos::ReturnedValue Albinos::Config::getSettingValue(char const *settingName, char **value) const
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
@@ -200,23 +200,9 @@ Albinos::ReturnedValue Albinos::Config::getSettingValue(char const *settingName,
   request["CONFIG_ID"] = configId;
   request["SETTING_NAME"] = settingName;
   sendJson(request);
-  std::memcpy(value, lastRequestedValue.c_str(), std::min(valueSize, lastRequestedValue.length()));
-  return SUCCESS;
-}
-
-///
-/// \todo handle error
-///
-Albinos::ReturnedValue Albinos::Config::getSettingSize(char const *settingName, size_t *size) const
-{
-  if (irrecoverable.has_value())
-    return *irrecoverable;
-  json request;
-  request["REQUEST_NAME"] = "SETTING_GET";
-  request["CONFIG_ID"] = configId;
-  request["SETTING_NAME"] = settingName;
-  sendJson(request);
-  *size = lastRequestedValue.length();
+  *value = new char[lastRequestedValue.length() + 1];
+  std::memcpy(*value, lastRequestedValue.c_str(), lastRequestedValue.length());
+  *value[lastRequestedValue.length()] = '\0';
   return SUCCESS;
 }
 

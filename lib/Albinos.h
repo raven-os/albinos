@@ -218,20 +218,10 @@ namespace Albinos
     /// \brief get the setting's value
     /// \param the config
     /// \param 'settingName' setting name
-    /// \param 'value' setting value will be written here without exceeding 'valueSize' bytes
-    /// \param 'valueSize' must contain the size of the buffer pointed by 'value'
+    /// \param 'value' allocate a NULL-terminated string containing the setting value
     /// \return error code
     ///
-    enum ReturnedValue getSettingValue(struct Config const*, char const *settingName, char *value, size_t valueSize);
-
-    ///
-    /// \brief get the size of the setting's value
-    /// \param the config
-    /// \param 'settingName' setting name
-    /// \param 'size' size of the setting's value
-    /// \return error code
-    ///
-    enum ReturnedValue getSettingSize(struct Config const*, char const *settingName, size_t *size);
+    enum ReturnedValue getSettingValue(struct Config const*, char const *settingName, char **value);
 
     ///
     /// \brief get the ordered list of all dependencies
