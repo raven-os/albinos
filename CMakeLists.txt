@@ -44,10 +44,11 @@ add_library(albinos::uvw ALIAS uvw)
 ###
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED gtk+-3.0)
+pkg_check_modules(GTK REQUIRED gtk-layer-shell-0)
 
 add_executable(albinos-service ${SOURCES_SERVICE})
 add_executable(albinos-gui ${SOURCES_GUI})
-target_link_libraries(albinos-gui gtk-layer-shell)
+target_link_libraries(albinos-gui GTK::gtk-layer-shell-0)
 target_link_libraries(albinos-gui ${GTK_LIBRARIES})
 target_include_directories(albinos-gui PUBLIC ${GTK_INCLUDE_DIRS})
 target_compile_options(albinos-gui PUBLIC ${GTK_CFLAGS_OTHER})
