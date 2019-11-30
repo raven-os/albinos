@@ -1,7 +1,8 @@
 ///
 /// \file Albinos.h
 /// \author Albinos-team
-/// \brief Must be included to use the Albinos
+/// \brief Must be included to use the Albinos.
+///
 ///
 
 #pragma once
@@ -76,15 +77,15 @@ namespace Albinos
     };
 
     ///
-    /// \brief define a struct representing a setting
+    /// \brief Represents a setting an it's associated value
     ///
     struct Setting {
-      char *value;
-      char *name;
+      char *value; ///< setting value
+      char *name; ///< setting name
     };
 
     ///
-    /// \brief define a struct representing an alias
+    /// \brief Represents an alias and the setting it refers to
     ///
     struct Alias {
       char *alias;
@@ -342,7 +343,7 @@ namespace Albinos
     /// \param subscription the subscription to query the setting name from
     /// \return the setting name
     ///
-    char const *getSubscriptionSettingName(struct Subscription const *Subscription);
+    char const *getSubscriptionSettingName(struct Subscription const *subscription);
 
 
 #ifdef __cplusplus
