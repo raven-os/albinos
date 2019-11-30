@@ -195,12 +195,12 @@ Albinos::ReturnedValue Albinos::getLocalSettings(Config const *config, Setting *
   }
 }
 
-Albinos::ReturnedValue Albinos::getLocalSettingsNames(Config const *config, char const * const **names)
+Albinos::ReturnedValue Albinos::getLocalSettingsNames(Config const *config, char const * const **names, size_t *size)
 {
   if (!config || !names)
     return BAD_PARAMETERS;
   try {
-    return config->getLocalSettingsNames(names);
+    return config->getLocalSettingsNames(names, size);
   } catch (LibError const &e) {
     return e.getCode();
   }

@@ -359,7 +359,7 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettings(Setting **settings, siz
 ///
 /// \todo implementation
 ///
-Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char const * const **names) const
+Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char const * const **names, size_t *size) const
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
@@ -376,6 +376,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char const * const
 		   return str.c_str();
 		 });
   result[settingNames->size()] = nullptr;
+  if (size)
+    *size = settingNames->size();
   *names = result;
   return SUCCESS;
 }
