@@ -1,3 +1,8 @@
+///
+/// \file LibError.hpp
+/// \author albinos-team
+///
+
 #pragma once
 
 # include "Albinos.h"

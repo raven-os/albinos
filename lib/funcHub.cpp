@@ -268,12 +268,12 @@ Albinos::ReturnedValue Albinos::pollSubscriptions(Config *config)
   }
 }
 
-void *Albinos::getSupscriptionUserData(struct Albinos::Subscription const *subsription)
+void *Albinos::getSubscriptionUserData(struct Albinos::Subscription const *subscription)
 {
-  return subsription->getAssociatedUserData();
+  return subscription->getAssociatedUserData();
 }
 
-char const *Albinos::getSupscriptionSettingName(struct Albinos::Subscription const *subsription)
+char const *Albinos::getSubscriptionSettingName(struct Albinos::Subscription const *subscription)
 {
-  return subsription->getAssociatedSetting().c_str();
+  return subscription->getAssociatedSetting().c_str();
 }
