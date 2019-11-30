@@ -44,3 +44,7 @@ nimble install
 ```bash
 albinos_editor
 ```
+
+## Documentation
+
+See [our doc](https://docs.raven-os.org/p/albinos/master/index.html)!
