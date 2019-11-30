@@ -1,4 +1,7 @@
 ///
+///
+/// \file funcHub.hpp
+/// \author albinos-team
 /// \date 16/10/2018
 /// \brief make all redirections/implementations for functions from Albinos.hpp
 /// \bug
