@@ -80,7 +80,7 @@ namespace Albinos
 
     ReturnedValue getDependencies(Config ***deps, size_t *size) const;
     ReturnedValue getLocalSettings(Setting **settings, size_t *size) const;
-    ReturnedValue getLocalSettingsNames(char const * const **names) const;
+    ReturnedValue getLocalSettingsNames(char const * const **names, size_t *size) const;
     ReturnedValue getLocalAliases(Alias **aliases, size_t *size) const;
 
     ReturnedValue deleteConfig() const;
