@@ -1,4 +1,6 @@
-# Communication lib-service
+# Communication lib-service {#Communication}
+
+*Note: if you're a client side application, you most likelly want to use the library, which is documented in the [library header](@ref Albinos.h)*
 
 ## Requests
 

@@ -1,3 +1,7 @@
+# Overview {#Overview}
+
+===
+
 # Creating and retrieving a configuration
 
 *For C++ developers, all functions and structs are in the "Albinos" namespace*
