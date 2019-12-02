@@ -66,6 +66,10 @@ namespace Albinos
     Config(uint32_t configId);
     ~Config();
 
+    uint32_t getConfigId() const noexcept {
+      return configId;
+    }
+
     ReturnedValue getKey(Key *configKey) const;
     ReturnedValue getReadOnlyKey(Key *configKey) const;
     ReturnedValue getSettingValue(char const *settingName, char *value, size_t valueSize) const;

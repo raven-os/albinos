@@ -301,26 +301,38 @@ Albinos::ReturnedValue Albinos::Config::removeSetting(char const *name)
 }
 
 ///
-/// \todo implementation
+/// \todo get errors
 ///
 Albinos::ReturnedValue Albinos::Config::include(Key *inheritFrom, int position)
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
-  (void)inheritFrom;
-  (void)position;
+  Config included(*inheritFrom);
+  json request;
+  request["REQUEST_NAME"] = "CONFIG_INCLUDE";
+  request["SRC"] = included.getConfigId();
+  request["INCLUDE_POSITION"] = position;
+  sendJson(request);
   return SUCCESS;
 }
 
 ///
-/// \todo implementation
+/// \todo get errors
 ///
 Albinos::ReturnedValue Albinos::Config::uninclude(Key *inheritFrom, int position)
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
-  (void)inheritFrom;
-  (void)position;
+  json request;
+  request["REQUEST_NAME"] = "CONFIG_UNINCLUDE";
+  if (inheritFrom) {
+    Config included(*inheritFrom);
+    request["SRC"] = included.getConfigId();
+    sendJson(request);
+  } else {
+    request["INDEX"] = position;
+    sendJson(request);
+  }
   return SUCCESS;
 }
 
