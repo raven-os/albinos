@@ -42,7 +42,8 @@ TEST_CASE("All case")
     CHECK_EQ(Albinos::getSettingValue(ptr, "foo", foo_setting_value.data(), foo_setting_size), Albinos::SUCCESS);
     CHECK_EQ(foo_setting_value, "42bar");
 
-
+    //! Alias
+    CHECK_EQ(Albinos::setSettingAlias(ptr, "foo", "42foo"), Albinos::SUCCESS);
     //! Readonly key
     Albinos::Key readonly_key;
     CHECK_EQ(Albinos::getReadOnlyConfigKey(ptr, &readonly_key), Albinos::SUCCESS);
