@@ -69,6 +69,13 @@ void Albinos::Config::parseResponse(json const &data)
     return;
   } catch (...) {
   }
+
+  try {
+    allAliases.reset(new std::map<std::string, std::string>(std::move(data.at("ALIASES").get<std::map<std::string, std::string>>())));
+
+    return;
+  } catch (...) {
+  }
 }
 
 ///
@@ -403,14 +410,27 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char const * const
 }
 
 ///
-/// \todo implementation
+/// \todo get errors
 ///
 Albinos::ReturnedValue Albinos::Config::getLocalAliases(Alias **aliases, size_t *size) const
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
-  (void)aliases;
-  (void)size;
+  if (!size)
+    return BAD_PARAMETERS;
+  json request;
+  request["REQUEST_NAME"] = "CONFIG_GET_ALIASES";
+  request["CONFIG_ID"] = configId;
+  sendJson(request);
+
+  *size = allAliases->size();
+  *aliases = new Alias [*size];
+  unsigned i = 0;
+  for (auto alias = allAliases->begin() ; alias != allAliases->end() ; ++alias) {
+    (*aliases)[i].alias = strdup(alias->first.c_str());
+    (*aliases)[i].setting = strdup(alias->second.c_str());
+    ++i;
+  }
   return SUCCESS;
 }
 
