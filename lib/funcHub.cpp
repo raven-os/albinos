@@ -218,8 +218,8 @@ void Albinos::destroySettingsArray(Setting *settings, size_t size)
   if (!settings)
     return;
   for (size_t i = 0 ; i < size ; ++i) {
-    delete settings[i].name;
-    delete settings[i].value;
+    free(settings[i].name);
+    free(settings[i].value);
   }
   delete[] settings;
 }

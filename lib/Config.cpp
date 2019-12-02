@@ -1,4 +1,5 @@
 # include "Config.hpp"
+# include <cstring>
 
 ///
 /// \todo handle event
@@ -57,6 +58,13 @@ void Albinos::Config::parseResponse(json const &data)
 
   try {
     settingNames.reset(new std::vector<std::string>(std::move(data.at("SETTINGS_NAMES").get<std::vector<std::string>>())));
+
+    return;
+  } catch (...) {
+  }
+
+  try {
+    settingValues.reset(new std::map<std::string, std::string>(std::move(data.at("SETTINGS").get<std::map<std::string, std::string>>())));
 
     return;
   } catch (...) {
@@ -344,27 +352,41 @@ Albinos::ReturnedValue Albinos::Config::getDependencies(Config ***deps, size_t *
 }
 
 ///
-/// \todo implementation
+/// \todo get errors
 ///
 Albinos::ReturnedValue Albinos::Config::getLocalSettings(Setting **settings, size_t *size) const
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
-  (void)settings;
-  (void)size;
+  if (!size)
+    return BAD_PARAMETERS;
+  json request;
+  request["REQUEST_NAME"] = "CONFIG_GET_SETTINGS";
+  request["CONFIG_ID"] = configId;
+  sendJson(request);
+
+  *size = settingValues->size();
+  *settings = new Setting [*size];
+  unsigned i = 0;
+  for (auto setting = settingValues->begin() ; setting != settingValues->end() ; ++setting) {
+    (*settings)[i].name = strdup(setting->first.c_str());
+    (*settings)[i].value = strdup(setting->second.c_str());
+    ++i;
+  }
   return SUCCESS;
 }
 
 ///
-/// \todo implementation
+/// \todo get errors
 ///
 Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char const * const **names, size_t *size) const
 {
   if (irrecoverable.has_value())
     return *irrecoverable;
-  (void)names;
+  if (!size)
+    return BAD_PARAMETERS;
   json request;
-  request["REQUEST_NAME"] = "GET_SETTINGS_NAMES";
+  request["REQUEST_NAME"] = "CONFIG_GET_SETTINGS_NAMES";
   request["CONFIG_ID"] = configId;
   sendJson(request);
 
@@ -375,8 +397,7 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char const * const
 		   return str.c_str();
 		 });
   result[settingNames->size()] = nullptr;
-  if (size)
-    *size = settingNames->size();
+  *size = settingNames->size();
   *names = result;
   return SUCCESS;
 }
