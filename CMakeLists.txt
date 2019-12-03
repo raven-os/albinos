@@ -32,10 +32,18 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/AmokHuginnsson/replxx
 )
 
+FetchContent_GetProperties(uvw)
+if(NOT uvw_POPULATED)
+    FetchContent_Populate(uvw)
+    add_subdirectory(${uvw_SOURCE_DIR} ${uvw_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+#FetchContent_MakeAvailable(uvw)
 
-FetchContent_MakeAvailable(uvw)
-
-FetchContent_MakeAvailable(replxx)
+FetchContent_GetProperties(replxx)
+if(NOT replxx_POPULATED)
+    FetchContent_Populate(replxx)
+    add_subdirectory(${replxx_SOURCE_DIR} ${replxx_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 add_library(uvw INTERFACE)
 target_link_libraries(uvw INTERFACE uv_a)
