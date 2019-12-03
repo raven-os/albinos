@@ -165,7 +165,6 @@ Albinos::Config::~Config()
   request["REQUEST_NAME"] = "CONFIG_UNLOAD";
   request["CONFIG_ID"] = configId;
   sendJson(request);
-  socket->close();
 }
 
 Albinos::ReturnedValue Albinos::Config::getKey(Key *configKey) const
