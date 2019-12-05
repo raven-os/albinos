@@ -24,7 +24,7 @@ set(BUILD_TESTING ON)
 FetchContent_Declare(
         uvw
         GIT_REPOSITORY https://github.com/skypjack/uvw
-        GIT_TAG        v1.16.0_libuv-v1.28
+        GIT_TAG v1.16.0_libuv-v1.28
 )
 
 FetchContent_Declare(
@@ -32,10 +32,18 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/AmokHuginnsson/replxx
 )
 
+FetchContent_GetProperties(uvw)
+if(NOT uvw_POPULATED)
+    FetchContent_Populate(uvw)
+    add_subdirectory(${uvw_SOURCE_DIR} ${uvw_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+#FetchContent_MakeAvailable(uvw)
 
-FetchContent_MakeAvailable(uvw)
-
-FetchContent_MakeAvailable(replxx)
+FetchContent_GetProperties(replxx)
+if(NOT replxx_POPULATED)
+    FetchContent_Populate(replxx)
+    add_subdirectory(${replxx_SOURCE_DIR} ${replxx_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 add_library(uvw INTERFACE)
 target_link_libraries(uvw INTERFACE uv_a)
@@ -44,6 +52,18 @@ add_library(albinos::uvw ALIAS uvw)
 ###
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED gtk+-3.0)
+
+option(ALBINOS_BUILD_EDITORS "Enable to build editors" OFF)
+
+if (ALBINOS_BUILD_EDITORS)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GTK REQUIRED gtk+-3.0)
+    add_executable(albinos-gui ${SOURCES_GUI})
+    target_link_libraries(albinos-gui gtk-layer-shell)
+    target_link_libraries(albinos-gui ${GTK_LIBRARIES})
+    target_include_directories(albinos-gui PUBLIC ${GTK_INCLUDE_DIRS})
+    target_compile_options(albinos-gui PUBLIC ${GTK_CFLAGS_OTHER})
+endif ()
 
 add_executable(albinos-service ${SOURCES_SERVICE})
 add_executable(albinos-gui ${SOURCES_GUI})

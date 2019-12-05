@@ -416,7 +416,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char const * const
 		   return str.c_str();
 		 });
   result[settingNames->size()] = nullptr;
-  *size = settingNames->size();
+  if (size)
+    *size = settingNames->size();
   *names = result;
   return SUCCESS;
 }
