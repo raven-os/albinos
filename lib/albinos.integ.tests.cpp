@@ -9,7 +9,7 @@
 #include "Config.hpp"
 
 //! Create, GetConfigKey, SetSetting, GetSettingSize, GetSettingValue, SetSettingAlias, GetReadOnlyKey, retrieve_ptrGetConfig,
-//! UnsetAlias, RemoveSetting, Destroy, GetReadOnlyConfig, GetLocalSettings config done
+//! UnsetAlias, RemoveSetting, Destroy, GetReadOnlyConfig, GetLocalSettings, GetLocalSettingsNames config done
 
 //! All the tests need the service to be launched
 TEST_CASE("All case")
@@ -17,6 +17,8 @@ TEST_CASE("All case")
     Albinos::Config cfg_to_retrieve = Albinos::Config("None");
     Albinos::Config albinos_cfg = Albinos::Config("foo");
     Albinos::Setting* settings = new Albinos::Setting;
+
+
     Albinos::Config* ptr = &albinos_cfg;
     Albinos::Config* retrieve_ptr = &cfg_to_retrieve;
     const Albinos::Config* readonly_retrieve_ptr = &cfg_to_retrieve;
@@ -67,6 +69,11 @@ TEST_CASE("All case")
     CHECK_EQ(Albinos::getLocalSettings(ptr, &settings, &size), Albinos::SUCCESS);
     CHECK_EQ(size, 1);
     CHECK_EQ(std::string((settings + 0)->name), "foo");
+
+    char const * const *names;
+    CHECK_EQ(Albinos::getLocalSettingsNames(ptr, &names, &size), Albinos::SUCCESS);
+    CHECK_EQ(size, 1);
+    CHECK_EQ(std::string(*(names + 0)), "foo");
 
     //! RemoveSetting
     CHECK_EQ(Albinos::removeSetting(ptr, "foo"), Albinos::SUCCESS);
