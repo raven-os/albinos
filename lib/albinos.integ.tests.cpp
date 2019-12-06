@@ -8,8 +8,8 @@
 #include "Albinos.h"
 #include "Config.hpp"
 
-//! Create, GetConfigKey, SetSetting, GetSettingSize, GetSettingValue, SetSettingAlias, GetReadOnlyKey, GetConfig,
-//! UnsetAlias, RemoveSetting, Destroy config done
+//! Create, GetConfigKey, SetSetting, GetSettingSize, GetSettingValue, SetSettingAlias, GetReadOnlyKey, retrieve_ptrGetConfig,
+//! UnsetAlias, RemoveSetting, Destroy, GetReadOnlyConfig config done
 
 //! All the tests need the service to be launched
 TEST_CASE("All case")
@@ -18,6 +18,7 @@ TEST_CASE("All case")
     Albinos::Config albinos_cfg = Albinos::Config("foo");
     Albinos::Config* ptr = &albinos_cfg;
     Albinos::Config* retrieve_ptr = &cfg_to_retrieve;
+    const Albinos::Config* readonly_retrieve_ptr = &cfg_to_retrieve;
 
     //! Creation config
     CHECK_EQ(Albinos::createConfig("toto", &ptr), Albinos::SUCCESS);
@@ -56,6 +57,8 @@ TEST_CASE("All case")
     MESSAGE(readonly_key_str);
     CHECK(not std::string(readonly_key.data).empty());
     WARN_GT(readonly_key.size, 0);
+
+    CHECK_EQ(Albinos::getReadOnlyConfig(readonly_key, &readonly_retrieve_ptr), Albinos::SUCCESS);
 
     CHECK_EQ(Albinos::getConfig(key, &retrieve_ptr), Albinos::SUCCESS);
 
