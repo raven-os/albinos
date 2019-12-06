@@ -8,6 +8,9 @@
 #include "Albinos.h"
 #include "Config.hpp"
 
+//! Create, GetConfigKey, SetSetting, GetSettingSize, GetSettingValue, SetSettingAlias, GetReadOnlyKey, GetConfig,
+//! UnsetAlias, RemoveSetting, Destroy config done
+
 //! All the tests need the service to be launched
 TEST_CASE("All case")
 {
@@ -44,6 +47,8 @@ TEST_CASE("All case")
 
     //! Alias
     CHECK_EQ(Albinos::setSettingAlias(ptr, "foo", "42foo"), Albinos::SUCCESS);
+
+    CHECK_EQ(Albinos::unsetAlias(ptr, "42foo"), Albinos::SUCCESS);
     //! Readonly key
     Albinos::Key readonly_key;
     CHECK_EQ(Albinos::getReadOnlyConfigKey(ptr, &readonly_key), Albinos::SUCCESS);
@@ -54,6 +59,8 @@ TEST_CASE("All case")
 
     CHECK_EQ(Albinos::getConfig(key, &retrieve_ptr), Albinos::SUCCESS);
 
+    //! RemoveSetting
+    CHECK_EQ(Albinos::removeSetting(ptr, "foo"), Albinos::SUCCESS);
     //! Config Destruction
     CHECK_EQ(Albinos::destroyConfig(ptr), Albinos::SUCCESS);
 }
