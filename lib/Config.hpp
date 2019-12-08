@@ -45,6 +45,8 @@ namespace Albinos
     std::optional<KeyWrapper> key;
     std::optional<KeyWrapper> roKey;
     std::unique_ptr<std::vector<std::string>> settingNames;
+    std::unique_ptr<std::map<std::string, std::string>> settingValues;
+    std::unique_ptr<std::map<std::string, std::string>> allAliases;
 
     std::shared_ptr<uvw::Loop> socketLoop{uvw::Loop::getDefault()};
     std::shared_ptr<uvw::PipeHandle> socket{socketLoop->resource<uvw::PipeHandle>()};
@@ -63,6 +65,10 @@ namespace Albinos
     Config(Key const &key);
     Config(uint32_t configId);
     ~Config();
+
+    uint32_t getConfigId() const noexcept {
+      return configId;
+    }
 
     ReturnedValue getKey(Key *configKey) const;
     ReturnedValue getReadOnlyKey(Key *configKey) const;

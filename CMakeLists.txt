@@ -50,6 +50,8 @@ target_link_libraries(uvw INTERFACE uv_a)
 target_include_directories(uvw INTERFACE ${uvw_SOURCE_DIR}/src ${uvw_SOURCE_DIR}/deps/libuv/include)
 add_library(albinos::uvw ALIAS uvw)
 ###
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK REQUIRED gtk+-3.0)
 
 option(ALBINOS_BUILD_EDITORS "Enable to build editors" OFF)
 
@@ -64,6 +66,11 @@ if (ALBINOS_BUILD_EDITORS)
 endif ()
 
 add_executable(albinos-service ${SOURCES_SERVICE})
+add_executable(albinos-gui ${SOURCES_GUI})
+target_link_libraries(albinos-gui gtk-layer-shell)
+target_link_libraries(albinos-gui ${GTK_LIBRARIES})
+target_include_directories(albinos-gui PUBLIC ${GTK_INCLUDE_DIRS})
+target_compile_options(albinos-gui PUBLIC ${GTK_CFLAGS_OTHER})
 find_library(sqlite3_lib NAMES sqlite3)
 target_link_libraries(albinos-service PUBLIC albinos::uvw ${sqlite3_lib} stdc++fs)
 target_sources(albinos-service PRIVATE vendor/loguru/loguru.cpp)
@@ -73,6 +80,12 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(${PROJECT_NAME} albinos::uvw stdc++fs)
 target_include_directories(${PROJECT_NAME} PUBLIC vendor/uvw/src vendor/uvw/deps/libuv/include vendor/json/single_include/nlohmann)
 add_subdirectory(tests)
+
+add_executable(${PROJECT_NAME}_integ_test)
+target_sources(${PROJECT_NAME}_integ_test PRIVATE ${SOURCES_LIB})
+target_include_directories(${PROJECT_NAME}_integ_test PUBLIC vendor/uvw/src vendor/uvw/deps/libuv/include vendor/json/single_include/nlohmann vendor/doctest/doctest)
+target_link_libraries(${PROJECT_NAME}_integ_test PUBLIC albinos::uvw stdc++fs)
+
 
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)
 install(FILES lib/Albinos.h DESTINATION include)
