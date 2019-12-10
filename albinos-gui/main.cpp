@@ -68,11 +68,21 @@ static void deleteConfig(GtkWidget *widget, gpointer data)
     gtk_widget_destroy(GTK_WIDGET(askWin));
 }
 
+static void manageKeyboardEvents(GtkWidget *widget, GdkEventKey *evt, gpointer data)
+{
+    if (evt->keyval == GDK_KEY_Delete) {
+        GtkWidget *listBox = GTK_WIDGET(data);
+        configManager->removeConfig(gtk_label_get_label(GTK_LABEL(gtk_bin_get_child(GTK_BIN(gtk_list_box_get_selected_row(GTK_LIST_BOX(listBox)))))));
+    }
+}
+
 static void activate(GtkApplication* app, void *_data)
 {
     (void)_data;
 
     GtkWindow *gtk_window = GTK_WINDOW (gtk_application_window_new (app));
+
+    gtk_widget_set_events(GTK_WIDGET(gtk_window), GDK_KEY_PRESS_MASK);
 
     gtk_layer_init_for_window(gtk_window);
     gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_BOTTOM);
@@ -84,6 +94,8 @@ static void activate(GtkApplication* app, void *_data)
     GtkWidget *configDisplay = gtk_tree_view_new();
 
     configManager = new ConfigManager(list, configDisplay);
+
+    g_signal_connect(G_OBJECT(gtk_window), "key_press_event", G_CALLBACK(manageKeyboardEvents), list);
 
     GtkWidget *addButton = gtk_button_new_with_label("Add");
     g_signal_connect(G_OBJECT(addButton), "clicked", G_CALLBACK(addConfig), nullptr);
