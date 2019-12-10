@@ -475,3 +475,8 @@ Albinos::ReturnedValue Albinos::Config::pollSubscriptions()
   }
   return SUCCESS;
 }
+
+std::string const &Albinos::Config::getConfigName() const
+{
+    return name.value();
+}

@@ -1,5 +1,53 @@
 # include "gtk-layer-shell/gtk-layer-shell.h"
 # include <gtk/gtk.h>
+# include "ConfigManager.hpp"
+
+static ConfigManager *configManager;
+
+enum {
+    CONFIRM,
+    CANCEL
+};
+
+static bool getTextEntry(std::string const &txtLabel, std::string &entry)
+{
+    bool valid = false;
+    GtkWidget *askWin = gtk_dialog_new();
+    GtkWidget *entryField = gtk_entry_new();
+    GtkWidget *label = gtk_label_new(txtLabel.c_str());
+    gtk_dialog_add_action_widget(GTK_DIALOG(askWin), label, CONFIRM);
+    gtk_dialog_add_action_widget(GTK_DIALOG(askWin), entryField, CONFIRM);
+    gtk_dialog_add_button(GTK_DIALOG(askWin), "Ok", CONFIRM);
+    gtk_dialog_add_button(GTK_DIALOG(askWin), "Cancel", CANCEL);
+    gtk_widget_show_all(GTK_WIDGET (askWin));
+    if (gtk_dialog_run(GTK_DIALOG(askWin)) == CONFIRM)
+        valid = true;
+    entry = gtk_entry_get_text(GTK_ENTRY(entryField));
+    gtk_widget_destroy(GTK_WIDGET(askWin));
+    return valid;
+}
+
+static void createConfig(GtkWidget *widget, gpointer data)
+{
+    (void)data;
+    std::string name;
+
+    if (getTextEntry("Config name", name)) {
+        configManager->addNewConfig(name);
+        gtk_widget_show_all(GTK_WIDGET (gtk_widget_get_parent(widget)));
+    }
+}
+
+static void addConfig(GtkWidget *widget, gpointer data)
+{
+    (void)data;
+    std::string key;
+
+    if (getTextEntry("Config key", key)) {
+        configManager->addExistingConfig(key);
+        gtk_widget_show_all(GTK_WIDGET (gtk_widget_get_parent(widget)));
+    }
+}
 
 static void activate(GtkApplication* app, void *_data)
 {
@@ -13,19 +61,18 @@ static void activate(GtkApplication* app, void *_data)
     gtk_layer_set_keyboard_interactivity(gtk_window, TRUE);
 
     GtkWidget *box = gtk_grid_new();
-    GtkWidget *addButton = gtk_button_new_with_label("Add");
-    GtkWidget *createButton = gtk_button_new_with_label("Create");
-    GtkWidget *removeButton = gtk_button_new_with_label("Remove");
-    GtkWidget *item_list_1 = gtk_label_new("config 1");
-    GtkWidget *item_list_2 = gtk_label_new("config 2");
-    GtkWidget *item_list_3 = gtk_label_new("config 3");
     GtkWidget *list = gtk_list_box_new();
     GtkWidget *configDisplay = gtk_tree_view_new();
 
+    configManager = new ConfigManager(list, configDisplay);
+
+    GtkWidget *addButton = gtk_button_new_with_label("Add");
+    g_signal_connect(G_OBJECT(addButton), "clicked", G_CALLBACK(addConfig), nullptr);
+    GtkWidget *createButton = gtk_button_new_with_label("Create");
+    g_signal_connect(G_OBJECT(createButton), "clicked", G_CALLBACK(createConfig), nullptr);
+    GtkWidget *removeButton = gtk_button_new_with_label("Remove");
+
     GtkWidget *horizSep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_list_box_prepend(GTK_LIST_BOX(list), item_list_3);
-    gtk_list_box_prepend(GTK_LIST_BOX(list), item_list_2);
-    gtk_list_box_prepend(GTK_LIST_BOX(list), item_list_1);
     gtk_grid_attach(GTK_GRID(box), createButton, 0, 0, 1, 1);
     gtk_grid_attach_next_to(GTK_GRID(box), addButton, createButton, GTK_POS_RIGHT, 1, 1);
     gtk_grid_attach_next_to(GTK_GRID(box), removeButton, addButton, GTK_POS_RIGHT, 1, 1);
