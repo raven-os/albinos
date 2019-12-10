@@ -6,10 +6,8 @@
 ///
 void Albinos::Config::parseResponse(json const &data)
 {
-  std::string status;
-
   try {
-    status = data.at("REQUEST_STATE").get<std::string>();
+    lastStatus = data.at("REQUEST_STATE").get<std::string>();
   } catch (...) {
     // if the data received do not contain 'REQUEST_STATE', it's an event
     ModifType modif;
@@ -150,6 +148,8 @@ void Albinos::Config::loadConfig(KeyWrapper const &givenKey)
     assert(false); // unknow key type
   }
   sendJson(request);
+  if (lastStatus != "SUCCESS")
+      throw LibError(CONFIG_DOESNT_EXIST);
 }
 
 Albinos::Config::Config(std::string const &name)

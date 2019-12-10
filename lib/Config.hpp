@@ -30,6 +30,7 @@ namespace Albinos
     static constexpr uvw::TimerHandle::Time writeTimeout{std::chrono::duration<uint64_t, std::milli>(200)};
 
     using json = nlohmann::json;
+    std::string lastStatus;
 
     std::optional<ReturnedValue> irrecoverable;
 

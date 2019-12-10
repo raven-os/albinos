@@ -33,6 +33,8 @@ namespace Albinos
 
        SUCCESS,				///< returned in case of success
 
+       CONFIG_DOESNT_EXIST, ///< returned if the given key doesn't exist
+
        BAD_PARAMETERS,			///< returned if one of given parameters isn't good
 
        SOCKET_NOT_FOUND,        	///< returned if socket file is not found

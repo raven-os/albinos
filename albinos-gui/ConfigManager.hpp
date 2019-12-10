@@ -22,4 +22,6 @@ public:
     std::string addExistingConfig(std::string const &key);
     void removeConfig(std::string const &name);
     void deleteConfig(std::string const &name);
+
+    std::map<std::string, GtkWidget*> const &getListElems() const;
 };

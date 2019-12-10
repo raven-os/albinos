@@ -72,3 +72,8 @@ ConfigManager::~ConfigManager()
     for (const auto& widget : p_listElems)
         gtk_widget_destroy(widget.second);
 }
+
+std::map<std::string, GtkWidget *> const &ConfigManager::getListElems() const
+{
+    return p_listElems;
+}

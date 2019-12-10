@@ -49,6 +49,25 @@ static void addConfig(GtkWidget *widget, gpointer data)
     }
 }
 
+static void deleteConfig(GtkWidget *widget, gpointer data)
+{
+    (void)data;
+    GtkWidget *askWin = gtk_dialog_new();
+    GtkWidget *deleteList = gtk_combo_box_text_new();
+    for (const auto &elem : configManager->getListElems())
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(deleteList), elem.first.c_str());
+    gtk_dialog_add_action_widget(GTK_DIALOG(askWin), deleteList, CONFIRM);
+    gtk_dialog_add_button(GTK_DIALOG(askWin), "Ok", CONFIRM);
+    gtk_dialog_add_button(GTK_DIALOG(askWin), "Cancel", CANCEL);
+    gtk_widget_show_all(GTK_WIDGET (askWin));
+
+    if (gtk_dialog_run(GTK_DIALOG(askWin)) == CONFIRM && gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(deleteList))) {
+        configManager->deleteConfig(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(deleteList)));
+        gtk_widget_show_all(GTK_WIDGET (gtk_widget_get_parent(widget)));
+    }
+    gtk_widget_destroy(GTK_WIDGET(askWin));
+}
+
 static void activate(GtkApplication* app, void *_data)
 {
     (void)_data;
@@ -70,12 +89,13 @@ static void activate(GtkApplication* app, void *_data)
     g_signal_connect(G_OBJECT(addButton), "clicked", G_CALLBACK(addConfig), nullptr);
     GtkWidget *createButton = gtk_button_new_with_label("Create");
     g_signal_connect(G_OBJECT(createButton), "clicked", G_CALLBACK(createConfig), nullptr);
-    GtkWidget *removeButton = gtk_button_new_with_label("Remove");
+    GtkWidget *deleteButton = gtk_button_new_with_label("Delete");
+    g_signal_connect(G_OBJECT(deleteButton), "clicked", G_CALLBACK(deleteConfig), nullptr);
 
     GtkWidget *horizSep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_grid_attach(GTK_GRID(box), createButton, 0, 0, 1, 1);
     gtk_grid_attach_next_to(GTK_GRID(box), addButton, createButton, GTK_POS_RIGHT, 1, 1);
-    gtk_grid_attach_next_to(GTK_GRID(box), removeButton, addButton, GTK_POS_RIGHT, 1, 1);
+    gtk_grid_attach_next_to(GTK_GRID(box), deleteButton, addButton, GTK_POS_RIGHT, 1, 1);
     gtk_grid_attach_next_to(GTK_GRID(box), horizSep, createButton, GTK_POS_BOTTOM, 30, 1);
     gtk_grid_attach_next_to(GTK_GRID(box), configDisplay, horizSep, GTK_POS_BOTTOM, 30, 20);
     gtk_grid_attach_next_to(GTK_GRID(box), list, configDisplay, GTK_POS_RIGHT, 1, 20);
