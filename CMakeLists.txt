@@ -48,7 +48,6 @@ add_library(uvw INTERFACE)
 target_link_libraries(uvw INTERFACE uv_a)
 target_include_directories(uvw INTERFACE ${uvw_SOURCE_DIR}/src ${uvw_SOURCE_DIR}/deps/libuv/include)
 add_library(albinos::uvw ALIAS uvw)
-###
 add_executable(albinos-service ${SOURCES_SERVICE})
 find_library(sqlite3_lib NAMES sqlite3)
 target_link_libraries(albinos-service PUBLIC albinos::uvw ${sqlite3_lib} stdc++fs)
