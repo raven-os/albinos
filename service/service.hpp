@@ -330,7 +330,8 @@ namespace raven
             return ;
         }
         */
-        auto &config_json_data = loaded_configs_.at(cfg.id.value());
+        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+        auto &config_json_data = loaded_configs_.at(db_id.value());
         config_json_data[config_includes_field_keyword].push_back(db_id_to_include.value());
 
         /*
@@ -360,8 +361,7 @@ namespace raven
             return ;
         }
          */
-
-        auto &config_json_data = loaded_configs_.at(cfg.id.value());
+        auto &config_json_data = loaded_configs_.at(db_id.value());
 
         for (auto &[key, value] : cfg.settings_to_update.items()) {
             config_json_data[config_settings_field_keyword][key] = value;
@@ -406,7 +406,7 @@ namespace raven
             return ;
         auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
 
-        auto &config_json_data = loaded_configs_.at(cfg.id.value());
+        auto &config_json_data = loaded_configs_.at(db_id.value());
         config_json_data[config_settings_field_keyword].erase(cfg.setting_name);
 
         for (auto &[fileno, client] : config_clients_registry_)
@@ -437,7 +437,8 @@ namespace raven
             return ;
         }
          */
-        const auto &config_json_data = loaded_configs_.at(cfg.id.value());
+        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+        const auto &config_json_data = loaded_configs_.at(db_id.value());
 
         setting_get_answer answer;
         try {
@@ -467,7 +468,8 @@ namespace raven
             return ;
         }
          */
-        const auto &config_json_data = loaded_configs_.at(cfg.id.value());
+        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+        const auto &config_json_data = loaded_configs_.at(db_id.value());
 
         json::json settings_name;
         for (auto &[key, value] : config_json_data[config_settings_field_keyword].items()) {
@@ -493,7 +495,8 @@ namespace raven
             return ;
         }
          */
-        const auto &config_json_data = loaded_configs_.at(cfg.id.value());
+        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+        const auto &config_json_data = loaded_configs_.at(db_id.value());
 
         config_get_settings_answer answer{config_json_data[config_settings_field_keyword], convert_request_state.at(request_state::success)};
         send_answer(sock, answer);
