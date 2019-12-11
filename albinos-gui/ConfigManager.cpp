@@ -8,6 +8,7 @@
 ConfigManager::ConfigManager(GtkWidget *list, GtkWidget *configDisplay)
 : p_list(list)
 , p_configDisplay(configDisplay)
+, p_focusedConfig("")
 {}
 
 
@@ -60,10 +61,13 @@ void ConfigManager::deleteConfig(std::string const &name)
     Albinos::releaseConfig(p_configs[name]);
     gtk_container_foreach(GTK_CONTAINER(p_list), rowDestroyer, (gpointer)name.c_str());
     p_configs.erase(name);
+    if (name == p_focusedConfig)
+        p_focusedConfig = "";
 }
 
 void ConfigManager::removeConfig(std::string const &name)
 {
+    p_focusedConfig = "";
     Albinos::releaseConfig(p_configs[name]);
     gtk_container_foreach(GTK_CONTAINER(p_list), rowDestroyer, (gpointer)name.c_str());
     p_configs.erase(name);
@@ -106,7 +110,6 @@ void ConfigManager::fetchConfig(std::string const &name)
         gtk_widget_show_all(p_list);
         return;
     }
-    std::cout << "FOCUSED CONFIG : " << name << std::endl;
     p_focusedConfig = name;
     size_t settingsSize;
     Albinos::Setting *settings;
@@ -171,4 +174,9 @@ void ConfigManager::deleteSetting(std::string const &name)
 void ConfigManager::updateSetting(std::string const &name, std::string const &value)
 {
     Albinos::setSetting(p_configs[p_focusedConfig], name.c_str(), value.c_str());
+}
+
+std::string const &ConfigManager::getFocusedConfig() const
+{
+    return p_focusedConfig;
 }

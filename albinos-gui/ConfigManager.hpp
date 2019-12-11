@@ -30,4 +30,6 @@ public:
 
     GtkWidget const *getList() const;
     GtkWidget *getList();
+
+    std::string const &getFocusedConfig() const;
 };

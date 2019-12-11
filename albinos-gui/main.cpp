@@ -6,6 +6,7 @@ static ConfigManager *configManager;
 
 enum {
     CONFIRM,
+    DO_NOTHING,
     CANCEL
 };
 
@@ -85,6 +86,31 @@ static void manageKeyboardEvents(GtkWidget *widget, GdkEventKey *evt, gpointer d
     }
 }
 
+static void newSetting(GtkWidget *widget, gpointer data)
+{
+    if (configManager->getFocusedConfig() == "")
+        return;
+    GtkWidget *askWin = gtk_dialog_new();
+    GtkWidget *nameLabel = gtk_label_new("name");
+    GtkWidget *nameField = gtk_entry_new();
+    GtkWidget *valueLabel = gtk_label_new("value");
+    GtkWidget *valueField = gtk_entry_new();
+    gtk_dialog_add_action_widget(GTK_DIALOG(askWin), nameLabel, DO_NOTHING);
+    gtk_dialog_add_action_widget(GTK_DIALOG(askWin), nameField, DO_NOTHING);
+    gtk_dialog_add_action_widget(GTK_DIALOG(askWin), valueLabel, DO_NOTHING);
+    gtk_dialog_add_action_widget(GTK_DIALOG(askWin), valueField, DO_NOTHING);
+    gtk_dialog_add_button(GTK_DIALOG(askWin), "Ok", CONFIRM);
+    gtk_dialog_add_button(GTK_DIALOG(askWin), "Cancel", CANCEL);
+    gtk_widget_show_all(GTK_WIDGET (askWin));
+    gint response;
+    while ((response = gtk_dialog_run(GTK_DIALOG(askWin))) == DO_NOTHING);
+    if (response == CONFIRM) {
+        configManager->updateSetting(gtk_entry_get_text(GTK_ENTRY(nameField)), gtk_entry_get_text(GTK_ENTRY(valueField)));
+        configManager->fetchConfig(configManager->getFocusedConfig());
+    }
+    gtk_widget_destroy(GTK_WIDGET(askWin));
+}
+
 static void activate(GtkApplication* app, void *_data)
 {
     (void)_data;
@@ -113,11 +139,14 @@ static void activate(GtkApplication* app, void *_data)
     g_signal_connect(G_OBJECT(createButton), "clicked", G_CALLBACK(createConfig), nullptr);
     GtkWidget *deleteButton = gtk_button_new_with_label("Delete");
     g_signal_connect(G_OBJECT(deleteButton), "clicked", G_CALLBACK(deleteConfig), nullptr);
+    GtkWidget *newSettingButton = gtk_button_new_with_label("New Setting");
+    g_signal_connect(G_OBJECT(newSettingButton), "clicked", G_CALLBACK(newSetting), nullptr);
 
     GtkWidget *horizSep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_grid_attach(GTK_GRID(box), createButton, 0, 0, 1, 1);
     gtk_grid_attach_next_to(GTK_GRID(box), addButton, createButton, GTK_POS_RIGHT, 1, 1);
     gtk_grid_attach_next_to(GTK_GRID(box), deleteButton, addButton, GTK_POS_RIGHT, 1, 1);
+    gtk_grid_attach_next_to(GTK_GRID(box), newSettingButton, deleteButton, GTK_POS_RIGHT, 1, 1);
     gtk_grid_attach_next_to(GTK_GRID(box), horizSep, createButton, GTK_POS_BOTTOM, 30, 1);
     gtk_grid_attach_next_to(GTK_GRID(box), configDisplay, horizSep, GTK_POS_BOTTOM, 30, 20);
     gtk_grid_attach_next_to(GTK_GRID(box), list, configDisplay, GTK_POS_RIGHT, 1, 20);
