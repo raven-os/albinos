@@ -30,6 +30,7 @@ namespace Albinos
     static constexpr uvw::TimerHandle::Time writeTimeout{std::chrono::duration<uint64_t, std::milli>(200)};
 
     using json = nlohmann::json;
+    std::string lastStatus;
 
     std::optional<ReturnedValue> irrecoverable;
 
@@ -74,6 +75,7 @@ namespace Albinos
     ReturnedValue getReadOnlyKey(Key *configKey) const;
     ReturnedValue getSettingValue(char const *settingName, char *value, size_t valueSize) const;
     ReturnedValue getSettingSize(char const *settingName, size_t *size) const;
+    std::string const &getConfigName() const;
 
     ReturnedValue setSetting(char const *name, char const *value);
     ReturnedValue setSettingAlias(char const *name, char const *aliasName);

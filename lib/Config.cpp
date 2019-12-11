@@ -6,10 +6,8 @@
 ///
 void Albinos::Config::parseResponse(json const &data)
 {
-  std::string status;
-
   try {
-    status = data.at("REQUEST_STATE").get<std::string>();
+    lastStatus = data.at("REQUEST_STATE").get<std::string>();
   } catch (...) {
     // if the data received do not contain 'REQUEST_STATE', it's an event
     ModifType modif;
@@ -19,7 +17,7 @@ void Albinos::Config::parseResponse(json const &data)
     else if (modifStr == "DELETE")
       modif = DELETE;
     else
-      throw LibError(INVALID_REPONSE_FROM_SERVICE);
+      throw LibError(INVALID_RESPONSE_FROM_SERVICE);
     settingsUpdates.push_back({data.at("SETTING_NAME").get<std::string>(), modif});
     if (waitingForResponse)
       socketLoop->run<uvw::Loop::Mode::ONCE>();
@@ -106,7 +104,7 @@ void Albinos::Config::initSocket()
     //std::cout << "Data sent" << std::endl;
     sock.read();
     // if the service doesn't respond after 200ms, stop the loop
-    timer->start(writeTimeout, std::chrono::duration<uint64_t, std::milli>(1000));
+    //timer->start(writeTimeout, std::chrono::duration<uint64_t, std::milli>(1000));
     waitingForResponse = true;
     socketLoop->run<uvw::Loop::Mode::ONCE>();
     waitingForResponse = false;
@@ -150,6 +148,8 @@ void Albinos::Config::loadConfig(KeyWrapper const &givenKey)
     assert(false); // unknow key type
   }
   sendJson(request);
+  if (lastStatus != "SUCCESS")
+      throw LibError(CONFIG_DOESNT_EXIST);
 }
 
 Albinos::Config::Config(std::string const &name)
@@ -281,6 +281,7 @@ Albinos::ReturnedValue Albinos::Config::unsetAlias(char const *aliasName)
     return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "ALIAS_UNSET";
+  request["CONFIG_ID"] = configId;
   request["ALIAS_NAME"] = aliasName;
   sendJson(request);
   return SUCCESS;
@@ -295,6 +296,7 @@ Albinos::ReturnedValue Albinos::Config::removeSetting(char const *name)
     return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "SETTING_REMOVE";
+  request["CONFIG_ID"] = configId;
   request["SETTING_NAME"] = name;
   sendJson(request);
   return SUCCESS;
@@ -312,6 +314,7 @@ Albinos::ReturnedValue Albinos::Config::include(Key *inheritFrom, int position)
   request["REQUEST_NAME"] = "CONFIG_INCLUDE";
   request["SRC"] = included.getConfigId();
   request["INCLUDE_POSITION"] = position;
+  request["CONFIG_ID"] = configId;
   sendJson(request);
   return SUCCESS;
 }
@@ -325,6 +328,7 @@ Albinos::ReturnedValue Albinos::Config::uninclude(Key *inheritFrom, int position
     return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "CONFIG_UNINCLUDE";
+  request["CONFIG_ID"] = configId;
   if (inheritFrom) {
     Config included(*inheritFrom);
     request["SRC"] = included.getConfigId();
@@ -362,6 +366,7 @@ Albinos::ReturnedValue Albinos::Config::getDependencies(Config ***deps, size_t *
     return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "CONFIG_GET_DEPS";
+  request["CONFIG_ID"] = configId;
   sendJson(request);
   *size = depsIds.size();
   *deps = new Config* [*size];
@@ -383,6 +388,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettings(Setting **settings, siz
   request["REQUEST_NAME"] = "CONFIG_GET_SETTINGS";
   request["CONFIG_ID"] = configId;
   sendJson(request);
+    if (!settingValues)
+        return INVALID_RESPONSE_FROM_SERVICE;
 
   *size = settingValues->size();
   *settings = new Setting [*size];
@@ -408,6 +415,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char const * const
   request["REQUEST_NAME"] = "CONFIG_GET_SETTINGS_NAMES";
   request["CONFIG_ID"] = configId;
   sendJson(request);
+  if (!settingNames)
+      return INVALID_RESPONSE_FROM_SERVICE;
 
   auto result = new char const *[settingNames->size() + 1];
   std::transform(settingNames->begin(), settingNames->end(), result,
@@ -435,6 +444,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalAliases(Alias **aliases, size_t 
   request["REQUEST_NAME"] = "CONFIG_GET_ALIASES";
   request["CONFIG_ID"] = configId;
   sendJson(request);
+  if (!allAliases)
+    return INVALID_RESPONSE_FROM_SERVICE;
 
   *size = allAliases->size();
   *aliases = new Alias [*size];
@@ -474,4 +485,9 @@ Albinos::ReturnedValue Albinos::Config::pollSubscriptions()
     settingsUpdates.pop_back();
   }
   return SUCCESS;
+}
+
+std::string const &Albinos::Config::getConfigName() const
+{
+    return name.value();
 }

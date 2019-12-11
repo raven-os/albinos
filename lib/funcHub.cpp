@@ -26,6 +26,11 @@ Albinos::ReturnedValue Albinos::getConfig(Key key, Config **returnedConfig)
   return SUCCESS;
 }
 
+char const *Albinos::getConfigName(Config *returnedConfig)
+{
+    return returnedConfig->getConfigName().c_str();
+}
+
 Albinos::ReturnedValue Albinos::getReadOnlyConfig(Key key, Config const **returnedConfig)
 {
   try {

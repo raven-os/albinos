@@ -33,6 +33,8 @@ namespace Albinos
 
        SUCCESS,				///< returned in case of success
 
+       CONFIG_DOESNT_EXIST, ///< returned if the given key doesn't exist
+
        BAD_PARAMETERS,			///< returned if one of given parameters isn't good
 
        SOCKET_NOT_FOUND,        	///< returned if socket file is not found
@@ -41,7 +43,7 @@ namespace Albinos
 
        KEY_NOT_INITIALIZED,		///< returned by getReadOnlyConfigKey() or getConfigKey() if the requested key wasn't set up
 
-       INVALID_REPONSE_FROM_SERVICE,	///< returned if service provide invalid response
+       INVALID_RESPONSE_FROM_SERVICE,	///< returned if service provide invalid response
       };
 
     ///
@@ -142,6 +144,13 @@ namespace Albinos
     /// \return error code
     ///
     enum ReturnedValue getConfig(struct Key key, struct Config **returnedConfig);
+
+    ///
+    /// \brief get config name
+    /// \param config
+    /// \return config name
+    ///
+    char const *getConfigName(struct Config *config);
 
     ///
     /// \brief get const config from a read only key. The created struct must be released using releaseConfig()
