@@ -24,6 +24,8 @@ namespace raven
       R"(create unique index if not exists config_readonly_config_key_uindex on config (readonly_config_key);)"};
   inline constexpr const db_statement_st insert_config_create_statement{
       R"(insert into config (config_text, config_key, readonly_config_key) VALUES (?, ?, ?);)"};
+  inline constexpr const db_statement_st delete_config_statement{
+    R"(delete from config where id = ?;)"};
   inline constexpr const db_statement_st select_config_name_statement{
       R"(select config_text from config where id = ?;)"};
   inline constexpr const db_statement_st select_keys_config_create_statement{
@@ -152,6 +154,44 @@ namespace raven
         return {config_key, readonly_config_key, config_id};
     }
 
+    void config_destroy(config_id_st config_id) noexcept
+    {
+      /*
+       * Destroy a config with the id passed as parameter
+       *
+       * In case an error occur, the state will be set accordingly (`sql_error`, `fatal_error`)
+       *
+       */
+
+      LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
+      try {
+        int nb_count = 0;
+        execute_statement(select_count_config_element_statement) >> nb_count;
+        if (!nb_count)
+          throw sqlite::errors::empty(0, select_count_config_element_statement.value());
+        throw_misuse_if_count_return_zero_for_this_statement(select_count_config_from_id_statement, config_id.value());
+        execute_statement(delete_config_statement, config_id.value());
+        state = db_state::ok;
+      }
+
+      catch (const sqlite::errors::empty &error) {
+        DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
+        state = db_state::sql_error;
+      }
+      catch (const sqlite::errors::misuse &error) {
+        DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
+        state = db_state::unknow_config_id;
+      }
+      catch (const sqlite::sqlite_exception &error) {
+        DLOG_F(ERROR, "error: %s, from sql: %s", error.what(), error.get_sql().c_str());
+        state = db_state::sql_error;
+      }
+      catch (const std::exception &error) {
+        DLOG_F(ERROR, "%s", error.what());
+        state = db_state::fatal_error;
+      }
+    }
+
     std::string get_config_name(config_id_st config_id)
     {
         /*
@@ -218,7 +258,7 @@ namespace raven
         }
         catch (const sqlite::errors::empty &error) {
             DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
-            state = db_state::sql_error;
+            state = db_state::unknow_config_key;
         }
         catch (const sqlite::errors::misuse &error) {
             DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());

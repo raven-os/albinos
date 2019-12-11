@@ -67,6 +67,17 @@ namespace raven
       cfg.config_name = json_data.at(config_name_keyword).get<std::string>();
   }
 
+  //! CONFIG_DESTROY
+  struct config_destroy
+  {
+    config_id_st id;
+  };
+
+  inline void from_json(const raven::json::json &json_data, config_destroy &cfg)
+  {
+    cfg.id = config_id_st{json_data.at(config_id_keyword).get<std::size_t>()};
+  }
+
   //! CONFIG_CREATE ANSWER
   struct config_create_answer
   {
