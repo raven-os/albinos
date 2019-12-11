@@ -103,7 +103,6 @@ static void activate(GtkApplication* app, void *_data)
     g_signal_connect(G_OBJECT(list), "row-selected", G_CALLBACK(clickConfig), nullptr);
     GtkWidget *configDisplay = gtk_grid_new();
     gtk_grid_insert_column(GTK_GRID(configDisplay), 0);
-    gtk_grid_insert_column(GTK_GRID(configDisplay), 1);
     configManager = new ConfigManager(list, configDisplay);
 
     g_signal_connect(G_OBJECT(gtk_window), "key_press_event", G_CALLBACK(manageKeyboardEvents), list);

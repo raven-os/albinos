@@ -104,7 +104,7 @@ void Albinos::Config::initSocket()
     //std::cout << "Data sent" << std::endl;
     sock.read();
     // if the service doesn't respond after 200ms, stop the loop
-    timer->start(writeTimeout, std::chrono::duration<uint64_t, std::milli>(1000));
+    //timer->start(writeTimeout, std::chrono::duration<uint64_t, std::milli>(1000));
     waitingForResponse = true;
     socketLoop->run<uvw::Loop::Mode::ONCE>();
     waitingForResponse = false;
