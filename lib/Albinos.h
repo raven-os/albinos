@@ -43,7 +43,7 @@ namespace Albinos
 
        KEY_NOT_INITIALIZED,		///< returned by getReadOnlyConfigKey() or getConfigKey() if the requested key wasn't set up
 
-       INVALID_REPONSE_FROM_SERVICE,	///< returned if service provide invalid response
+       INVALID_RESPONSE_FROM_SERVICE,	///< returned if service provide invalid response
       };
 
     ///

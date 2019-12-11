@@ -27,6 +27,14 @@ static bool getTextEntry(std::string const &txtLabel, std::string &entry)
     return valid;
 }
 
+static void clickConfig(GtkListBox *box, GtkListBoxRow *row, gpointer data)
+{
+    if (!row)
+        configManager->fetchConfig("");
+    else
+        configManager->fetchConfig(gtk_label_get_label(GTK_LABEL(gtk_bin_get_child(GTK_BIN(row)))));
+}
+
 static void createConfig(GtkWidget *widget, gpointer data)
 {
     (void)data;
@@ -44,7 +52,7 @@ static void addConfig(GtkWidget *widget, gpointer data)
     std::string key;
 
     if (getTextEntry("Config key", key)) {
-        configManager->addExistingConfig(key);
+        std::string name = configManager->addExistingConfig(key);
         gtk_widget_show_all(GTK_WIDGET (gtk_widget_get_parent(widget)));
     }
 }
@@ -54,8 +62,9 @@ static void deleteConfig(GtkWidget *widget, gpointer data)
     (void)data;
     GtkWidget *askWin = gtk_dialog_new();
     GtkWidget *deleteList = gtk_combo_box_text_new();
-    for (const auto &elem : configManager->getListElems())
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(deleteList), elem.first.c_str());
+    for (auto elem = gtk_container_get_children(GTK_CONTAINER(configManager->getList())) ; elem ; elem = elem->next) {
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(deleteList), gtk_label_get_label(GTK_LABEL(gtk_bin_get_child(GTK_BIN(elem->data)))));
+    }
     gtk_dialog_add_action_widget(GTK_DIALOG(askWin), deleteList, CONFIRM);
     gtk_dialog_add_button(GTK_DIALOG(askWin), "Ok", CONFIRM);
     gtk_dialog_add_button(GTK_DIALOG(askWin), "Cancel", CANCEL);
@@ -91,8 +100,10 @@ static void activate(GtkApplication* app, void *_data)
 
     GtkWidget *box = gtk_grid_new();
     GtkWidget *list = gtk_list_box_new();
-    GtkWidget *configDisplay = gtk_tree_view_new();
-
+    g_signal_connect(G_OBJECT(list), "row-selected", G_CALLBACK(clickConfig), nullptr);
+    GtkWidget *configDisplay = gtk_grid_new();
+    gtk_grid_insert_column(GTK_GRID(configDisplay), 0);
+    gtk_grid_insert_column(GTK_GRID(configDisplay), 1);
     configManager = new ConfigManager(list, configDisplay);
 
     g_signal_connect(G_OBJECT(gtk_window), "key_press_event", G_CALLBACK(manageKeyboardEvents), list);

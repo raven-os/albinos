@@ -17,7 +17,7 @@ void Albinos::Config::parseResponse(json const &data)
     else if (modifStr == "DELETE")
       modif = DELETE;
     else
-      throw LibError(INVALID_REPONSE_FROM_SERVICE);
+      throw LibError(INVALID_RESPONSE_FROM_SERVICE);
     settingsUpdates.push_back({data.at("SETTING_NAME").get<std::string>(), modif});
     if (waitingForResponse)
       socketLoop->run<uvw::Loop::Mode::ONCE>();
@@ -383,6 +383,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettings(Setting **settings, siz
   request["REQUEST_NAME"] = "CONFIG_GET_SETTINGS";
   request["CONFIG_ID"] = configId;
   sendJson(request);
+    if (!settingValues)
+        return INVALID_RESPONSE_FROM_SERVICE;
 
   *size = settingValues->size();
   *settings = new Setting [*size];
@@ -408,6 +410,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalSettingsNames(char const * const
   request["REQUEST_NAME"] = "CONFIG_GET_SETTINGS_NAMES";
   request["CONFIG_ID"] = configId;
   sendJson(request);
+  if (!settingNames)
+      return INVALID_RESPONSE_FROM_SERVICE;
 
   auto result = new char const *[settingNames->size() + 1];
   std::transform(settingNames->begin(), settingNames->end(), result,
@@ -435,6 +439,8 @@ Albinos::ReturnedValue Albinos::Config::getLocalAliases(Alias **aliases, size_t 
   request["REQUEST_NAME"] = "CONFIG_GET_ALIASES";
   request["CONFIG_ID"] = configId;
   sendJson(request);
+  if (!allAliases)
+    return INVALID_RESPONSE_FROM_SERVICE;
 
   *size = allAliases->size();
   *aliases = new Alias [*size];

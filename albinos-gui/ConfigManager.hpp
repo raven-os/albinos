@@ -9,7 +9,8 @@
 class ConfigManager {
 
     std::map<std::string, Albinos::Config*> p_configs;
-    std::map<std::string, GtkWidget*> p_listElems;
+    std::map<std::string, std::string> p_fetchedSettings;
+    std::map<std::string, std::string> p_fetchedAliases;
     GtkWidget *p_list;
     GtkWidget *p_configDisplay;
 
@@ -22,6 +23,8 @@ public:
     std::string addExistingConfig(std::string const &key);
     void removeConfig(std::string const &name);
     void deleteConfig(std::string const &name);
+    void fetchConfig(std::string const &name);
 
-    std::map<std::string, GtkWidget*> const &getListElems() const;
+    GtkWidget const *getList() const;
+    GtkWidget *getList();
 };
