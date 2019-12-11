@@ -281,6 +281,7 @@ Albinos::ReturnedValue Albinos::Config::unsetAlias(char const *aliasName)
     return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "ALIAS_UNSET";
+  request["CONFIG_ID"] = configId;
   request["ALIAS_NAME"] = aliasName;
   sendJson(request);
   return SUCCESS;
@@ -295,6 +296,7 @@ Albinos::ReturnedValue Albinos::Config::removeSetting(char const *name)
     return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "SETTING_REMOVE";
+  request["CONFIG_ID"] = configId;
   request["SETTING_NAME"] = name;
   sendJson(request);
   return SUCCESS;
@@ -312,6 +314,7 @@ Albinos::ReturnedValue Albinos::Config::include(Key *inheritFrom, int position)
   request["REQUEST_NAME"] = "CONFIG_INCLUDE";
   request["SRC"] = included.getConfigId();
   request["INCLUDE_POSITION"] = position;
+  request["CONFIG_ID"] = configId;
   sendJson(request);
   return SUCCESS;
 }
@@ -325,6 +328,7 @@ Albinos::ReturnedValue Albinos::Config::uninclude(Key *inheritFrom, int position
     return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "CONFIG_UNINCLUDE";
+  request["CONFIG_ID"] = configId;
   if (inheritFrom) {
     Config included(*inheritFrom);
     request["SRC"] = included.getConfigId();
@@ -362,6 +366,7 @@ Albinos::ReturnedValue Albinos::Config::getDependencies(Config ***deps, size_t *
     return *irrecoverable;
   json request;
   request["REQUEST_NAME"] = "CONFIG_GET_DEPS";
+  request["CONFIG_ID"] = configId;
   sendJson(request);
   *size = depsIds.size();
   *deps = new Config* [*size];
