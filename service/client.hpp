@@ -6,6 +6,7 @@
 
 #include <unordered_map>
 #include "service_strong_types.hpp"
+#include "utils.hpp"
 
 namespace raven
 {
@@ -20,10 +21,11 @@ namespace raven
 
     client() = delete;
 
-    config_id_st insert_db_id(raven::config_id_st db_id)
+    config_id_st insert_db_id(raven::config_id_st db_id,  config_permission perm)
     {
         last_id++;
         config_ids_.insert({{last_id.value(), db_id.value()}});
+        config_perms_.insert({last_id.value(), perm});
         reverse_config_ids_.insert({{db_id.value(), last_id.value()}});
         return last_id;
     }
@@ -35,12 +37,18 @@ namespace raven
             auto db_id = config_ids_.at(id.value());
             reverse_config_ids_.erase(db_id);
         }
+        config_perms_.erase(id.value());
         config_ids_.erase(id.value());
     }
 
     config_id_st get_last_id() const noexcept
     {
         return last_id;
+    }
+
+    config_permission get_permission(raven::config_id_st id) const noexcept
+    {
+        return config_perms_.at(id.value());
     }
 
     void subscribe(raven::config_id_st id, const std::string &setting_name)
@@ -105,5 +113,6 @@ namespace raven
     std::unordered_map<raven::config_id_st::value_type, raven::config_id_st::value_type> config_ids_;
     std::unordered_map<raven::config_id_st::value_type, raven::config_id_st::value_type> reverse_config_ids_; // temporary workaround for a basic id lookup, will need in the future to be able to do that outside of the client class
     std::unordered_multimap<raven::config_id_st::value_type, std::string> sub_settings_;
+    std::unordered_map<raven::config_id_st::value_type, raven::config_permission> config_perms_;
   };
 };

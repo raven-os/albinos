@@ -8,6 +8,7 @@
 #include <string>
 #include <sqlite_modern_cpp.h>
 #include <random>
+#include <utility>
 #include <loguru.hpp>
 #include "service_strong_types.hpp"
 #include "utils.hpp"
@@ -235,7 +236,7 @@ namespace raven
         return std::move(config_name);
     }
 
-    config_id_st get_config_id(const config_key_st &config_key) noexcept
+    std::pair<config_id_st, config_permission> get_config_id(const config_key_st &config_key) noexcept
     {
         /*
          * Get the corresponding config_id to the key passed as parameter
@@ -246,7 +247,9 @@ namespace raven
 
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         config_id_st config_id;
+        config_permission config_perm;
         auto functor_receive_data = [&config_id](int id) { config_id = config_id_st{static_cast<std::size_t>(id)}; };
+        auto functor_determine_perm = [&config_perm](int is_readwrite) { config_perm = is_readwrite ? config_permission::readwrite : config_permission::readonly; };
         try {
             int nb_count = 0;
             execute_statement(select_count_config_element_statement) >> nb_count;
@@ -255,6 +258,8 @@ namespace raven
             throw_misuse_if_count_return_zero_for_this_statement(select_count_key_statement, config_key.value(), config_key.value());
             execute_statement(select_config_from_key_statement, config_key.value(), config_key.value()) >> functor_receive_data;
             state = db_state::ok;
+
+            execute_statement(select_count_readwrite_key_statement, config_key.value()) >> functor_determine_perm;
         }
         catch (const sqlite::errors::empty &error) {
             DLOG_F(ERROR, "misuse of api or wrong key: %s, from sql: %s", error.what(), error.get_sql().c_str());
@@ -272,7 +277,7 @@ namespace raven
             DLOG_F(ERROR, "%s", error.what());
             state = db_state::fatal_error;
         }
-        return config_id;
+        return std::make_pair(config_id, config_perm);
     }
 
     // TODO get permission from id
@@ -396,14 +401,14 @@ namespace raven
         SUBCASE("normal case key not readonly") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
             auto config_create_answer = db.config_create("ma_config");
-            auto id = db.get_config_id(config_create_answer.config_key);
+            auto id = db.get_config_id(config_create_answer.config_key).first;
             CHECK_EQ(id.value(), config_create_answer.config_id.value());
             std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
         }
         SUBCASE("normal case key readonly") {
             config_db db{std::filesystem::current_path() / "albinos_service_test.db"};
             auto config_create_answer = db.config_create("ma_config_readonly");
-            auto id = db.get_config_id(config_create_answer.readonly_config_key);
+            auto id = db.get_config_id(config_create_answer.readonly_config_key).first;
             CHECK_EQ(id.value(), config_create_answer.config_id.value());
             std::filesystem::remove(std::filesystem::current_path() / "albinos_service_test.db");
         }

@@ -6,6 +6,7 @@
 
 #include <string>
 #include <fstream>
+#include <random>
 #include "service_strong_types.hpp"
 
 namespace raven
@@ -24,6 +25,14 @@ namespace raven
       std::generate(begin(ret), end(ret), [&engine, &dist]() { return table_ascii.value()[dist(engine)]; });
       return ret;
   }
+
+
+  enum class config_permission : short
+  {
+    readonly,
+    readwrite
+  };
+
 }
 
 #ifdef DOCTEST_LIBRARY_INCLUDED
