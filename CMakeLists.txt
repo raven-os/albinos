@@ -32,17 +32,17 @@ FetchContent_Declare(
 )
 
 FetchContent_GetProperties(uvw)
-if(NOT uvw_POPULATED)
+if (NOT uvw_POPULATED)
     FetchContent_Populate(uvw)
     add_subdirectory(${uvw_SOURCE_DIR} ${uvw_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
+endif ()
 #FetchContent_MakeAvailable(uvw)
 
 FetchContent_GetProperties(replxx)
-if(NOT replxx_POPULATED)
+if (NOT replxx_POPULATED)
     FetchContent_Populate(replxx)
     add_subdirectory(${replxx_SOURCE_DIR} ${replxx_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
+endif ()
 
 add_library(uvw INTERFACE)
 target_link_libraries(uvw INTERFACE uv_a)
@@ -77,7 +77,17 @@ if (ALBINOS_BUILD_EDITORS)
     target_compile_options(albinos-gui PUBLIC ${GTK_CFLAGS_OTHER})
 endif ()
 
+include(GNUInstallDirs)
+
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)
 install(FILES lib/Albinos.h DESTINATION include)
 install(TARGETS albinos-service RUNTIME DESTINATION /usr/local/bin)
 install(FILES service/albinos.service DESTINATION /etc/systemd/system)
+
+if (ALBINOS_BUILD_EDITORS)
+    # 'make install' to the correct locations (provided by GNUInstallDirs).
+    install(TARGETS albinos-gui EXPORT AlbinosGui
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif ()
