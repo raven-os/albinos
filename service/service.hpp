@@ -216,6 +216,10 @@ namespace raven
       config_clients_registry_.at(sock.fileno()).remove_temp_id(cfg.id);
       load_ref_counter_[db_id.value()] -= 1;
       if (load_ref_counter_.at(db_id.value()) <= 0) {
+          auto &config = loaded_configs_.at(db_id.value())[config_includes_field_keyword];
+          for(auto i = config.rbegin(); i != config.rend(); ++i) {
+              _deep_unload(config_id_st{*i});
+          }
           if (destroyed_configs_.find(db_id.value()) != destroyed_configs_.end()) {
               db_.config_destroy(db_id);
               destroyed_configs_.erase(db_id.value());
@@ -275,14 +279,18 @@ namespace raven
         }
 
         if (!config_clients_registry_.at(sock.fileno()).has_loaded_db_id(id)) {
-            config_id_st temp_id = config_clients_registry_.at(sock.fileno()).insert_db_id(id, perm);
-            // TODO get permision for the key and store it with the id
-            if (load_ref_counter_.find(id.value()) != load_ref_counter_.end()) {
+            /*if (load_ref_counter_.find(id.value()) != load_ref_counter_.end()) {
                 load_ref_counter_[id.value()] +=  1;
             } else {
                 load_ref_counter_.insert({id.value(), 1});
                 loaded_configs_.insert({id.value(), db_.get_config(id)});
+            }*/
+            std::unordered_set<int> loaded;
+            if(!_deep_load(id, loaded)) {
+                send_answer(sock, request_state::unauthorized);
+                return ;
             }
+            config_id_st temp_id = config_clients_registry_.at(sock.fileno()).insert_db_id(id, perm);
             send_answer(sock, config_load_answer{name, temp_id, convert_request_state.at(request_state::success)});
         } else {
             config_id_st temp_id = config_clients_registry_.at(sock.fileno()).get_id_from_db(id);
@@ -303,6 +311,10 @@ namespace raven
         config_clients_registry_.at(sock.fileno()).remove_temp_id(cfg.id);
         load_ref_counter_[db_id.value()] -= 1;
         if (load_ref_counter_.at(db_id.value()) <= 0) {
+            auto &config = loaded_configs_.at(db_id.value())[config_includes_field_keyword];
+            for(auto i = config.rbegin(); i != config.rend(); ++i) {
+              _deep_unload(config_id_st{*i});
+            }
             if (destroyed_configs_.find(db_id.value()) != destroyed_configs_.end()) {
                 db_.config_destroy(db_id);
                 destroyed_configs_.erase(db_id.value());
@@ -317,9 +329,78 @@ namespace raven
           send_answer(sock);
     }
 
+    void _deep_unload(config_id_st to_unload)
+    {
+        load_ref_counter_[to_unload.value()] -= 1;
+        if (load_ref_counter_.at(to_unload.value()) <= 0) {
+            auto &config = loaded_configs_.at(to_unload.value())[config_includes_field_keyword];
+            for(auto i = config.rbegin(); i != config.rend(); ++i) {
+                _deep_unload(config_id_st{*i});
+            }
+            if (destroyed_configs_.find(to_unload.value()) != destroyed_configs_.end()) {
+                db_.config_destroy(to_unload);
+                destroyed_configs_.erase(to_unload.value());
+            } else
+                db_.update_config(loaded_configs_.at(to_unload.value()), config_id_st{to_unload});
+            loaded_configs_.erase(to_unload.value());
+            load_ref_counter_.erase(to_unload.value());
+        }
+    }
+
+    bool _deep_check(config_id_st to_load, std::unordered_set<int> &loaded)
+    {
+      auto &config = loaded_configs_.at(to_load.value())[config_includes_field_keyword];
+        for(auto i = config.rbegin(); i != config.rend(); ++i) {
+            if (loaded.find(*i) != loaded.end() || !_deep_check(config_id_st{*i}, loaded))
+               return false;
+        }
+        return true;
+    }
+
+    bool _deep_load(config_id_st to_load, std::unordered_set<int> &loaded)
+    {
+        bool failure = false;
+        if (loaded.find(to_load.value()) != loaded.end()) {
+           return false;
+        }
+
+        loaded.insert(to_load.value());
+        if (load_ref_counter_.find(to_load.value()) != load_ref_counter_.end()) {
+            if (!_deep_check(to_load, loaded))
+                return false;
+            load_ref_counter_[to_load.value()] +=  1;
+        } else {
+            load_ref_counter_.insert({to_load.value(), 1});
+            loaded_configs_.insert({to_load.value(), db_.get_config(to_load)});
+            auto &config = loaded_configs_.at(to_load.value())[config_includes_field_keyword];
+            for (auto i = config.rbegin(); i != config.rend(); ++i) {
+                if (!_deep_load(config_id_st{*i}, loaded)) {
+                    for(auto j = i.base() + 1; j != config.end(); ++j) {
+                        _deep_unload(config_id_st{*j});
+                    }
+                    failure = true;
+                    break ;
+                }
+            }
+            if (failure) {
+                load_ref_counter_[to_load.value()] -= 1;
+                if (load_ref_counter_.at(to_load.value()) <= 0) {
+                    if (destroyed_configs_.find(to_load.value()) != destroyed_configs_.end()) {
+                        db_.config_destroy(to_load);
+                        destroyed_configs_.erase(to_load.value());
+                    } else
+                        db_.update_config(loaded_configs_.at(to_load.value()), config_id_st{to_load});
+                    loaded_configs_.erase(to_load.value());
+                    load_ref_counter_.erase(to_load.value());
+                }
+            }
+        }
+        loaded.erase(to_load.value());
+        return !failure;
+    }
+
     void include_config(json::json &json_data, uvw::PipeHandle &sock)
     {
-        //TODO: Communication.md has changed, need to be modified
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
         auto cfg = fill_request<config_include>(json_data);
         DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
@@ -331,29 +412,59 @@ namespace raven
             return ;
         }
 
-        if (config_clients_registry_.at(sock.fileno()).get_permission(raven::config_id_st{cfg.id}) != config_permission::readwrite) {
+        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+        config_id_st db_id_to_include = config_clients_registry_.at(sock.fileno()).get_db_id_from({cfg.src_id});
+
+        if (config_clients_registry_.at(sock.fileno()).get_permission(raven::config_id_st{cfg.id}) != config_permission::readwrite ||
+            db_id == db_id_to_include) {
             send_answer(sock, request_state::unauthorized);
             return ;
         }
-        
-        config_id_st db_id_to_include = config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id});
 
-        /*
-        auto config_json_data = db_.get_config(config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id}));
-        if (db_.fail()) {
-            send_answer(sock, request_state::db_error);
+        auto &config_json_data = loaded_configs_.at(db_id.value());
+        /*if (load_ref_counter_.find(db_id_to_include.value()) != load_ref_counter_.end()) {
+          load_ref_counter_[db_id_to_include.value()] +=  1;
+        } else {
+          load_ref_counter_.insert({db_id_to_include.value(), 1});
+          loaded_configs_.insert({db_id_to_include.value(), db_.get_config(db_id_to_include)});
+        }*/
+        std::unordered_set<int> loaded;
+        if(!_deep_load(db_id_to_include, loaded)) {
+            send_answer(sock, request_state::unauthorized);
             return ;
         }
-        */
-        auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
-        auto &config_json_data = loaded_configs_.at(db_id.value());
         config_json_data[config_includes_field_keyword].push_back(db_id_to_include.value());
-
-        /*
-        update config
-        */
-
         send_answer(sock, request_state::success);
+    }
+
+    void uninclude_config(json::json &json_data, uvw::PipeHandle &sock)
+    {
+      LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
+      auto cfg = fill_request<config_include>(json_data);
+      DLOG_F(INFO, "cfg.id: %lu", cfg.id.value());
+      DLOG_F(INFO, "cfg.src_id: %lu", cfg.src_id.value());
+
+      if (!config_clients_registry_.at(sock.fileno()).has_loaded(raven::config_id_st{cfg.id}) ||
+          !config_clients_registry_.at(sock.fileno()).has_loaded(raven::config_id_st{cfg.src_id})) {
+        send_answer(sock, request_state::unknown_id);
+        return ;
+      }
+
+      auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
+      config_id_st db_id_to_uninclude = config_clients_registry_.at(sock.fileno()).get_db_id_from({cfg.src_id});
+
+      auto &config_json_data = loaded_configs_.at(db_id.value());
+      /*if (load_ref_counter_.find(db_id_to_include.value()) != load_ref_counter_.end()) {
+        load_ref_counter_[db_id_to_include.value()] +=  1;
+      } else {
+        load_ref_counter_.insert({db_id_to_include.value(), 1});
+        loaded_configs_.insert({db_id_to_include.value(), db_.get_config(db_id_to_include)});
+      }*/
+      _deep_unload(db_id_to_uninclude);
+      auto it = std::find(config_json_data[config_includes_field_keyword].begin(), config_json_data[config_includes_field_keyword].end(), db_id_to_uninclude.value());
+      if (it != config_json_data[config_includes_field_keyword].end())
+          config_json_data[config_includes_field_keyword].erase(it);
+      send_answer(sock, request_state::success);
     }
 
     void update_setting(json::json &json_data, uvw::PipeHandle &sock)
@@ -450,6 +561,21 @@ namespace raven
         }
     }
 
+    bool _deep_get(config_id_st db_id, const std::string &setting, std::string &answer)
+    {
+        const auto &config_json_data = loaded_configs_.at(db_id.value());
+        if(config_json_data[config_settings_field_keyword].find(setting) != config_json_data[config_settings_field_keyword].end()) {
+            answer = config_json_data[config_settings_field_keyword].at(setting);
+            return true;
+        }
+        for(auto i = config_json_data[config_includes_field_keyword].rbegin(); i != config_json_data[config_includes_field_keyword].rend(); ++i) {
+            if (_deep_get(config_id_st{*i}, setting, answer)) {
+              return true;
+            }
+        }
+        return false;
+    }
+
     void get_setting(json::json &json_data, uvw::PipeHandle &sock)
     {
         LOG_SCOPE_F(INFO, __PRETTY_FUNCTION__);
@@ -460,26 +586,36 @@ namespace raven
             send_answer(sock, request_state::unknown_id);
             return ;
         }
-        /*
-        auto config_json_data = db_.get_config(config_clients_registry_.at(sock.fileno()).get_db_id_from(raven::config_id_st{cfg.id}));
-        if (db_.fail()) {
-            send_answer(sock, request_state::db_error);
-            return ;
-        }
-         */
         auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
-        const auto &config_json_data = loaded_configs_.at(db_id.value());
+        //const auto &config_json_data = loaded_configs_.at(db_id.value());
 
         setting_get_answer answer;
-        try {
+        /*try {
             answer.setting_value = config_json_data[config_settings_field_keyword].at(cfg.setting_name);
         }
         catch (const json::json::out_of_range &error) {
             send_answer(sock, request_state::unknown_setting);
             return ;
+        }*/
+        if (!_deep_get(db_id, cfg.setting_name, answer.setting_value)){
+            send_answer(sock, request_state::unknown_setting);
+            return ;
         }
         answer.request_state = convert_request_state.at(request_state::success);
         send_answer(sock, answer);
+    }
+
+    void _deep_get_all(config_id_st db_id, json::json &json_data)
+    {
+        const auto &config_json_data = loaded_configs_.at(db_id.value());
+        for(auto i = config_json_data[config_includes_field_keyword].rbegin(); i != config_json_data[config_includes_field_keyword].rend(); ++i) {
+            for(auto &[setting, value] : loaded_configs_.at(*i)[config_settings_field_keyword].items()) {
+                if(json_data.find(setting) == json_data.end()) {
+                    json_data[setting] = value;
+                }
+            }
+            _deep_get_all(config_id_st{*i}, json_data);
+        }
     }
 
     void get_settings_names(json::json &json_data, uvw::PipeHandle &sock)
@@ -501,10 +637,16 @@ namespace raven
         auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
         const auto &config_json_data = loaded_configs_.at(db_id.value());
 
+        json::json all_configs = config_json_data[config_settings_field_keyword];
+        _deep_get_all(db_id, all_configs);
         json::json settings_name;
-        for (auto &[key, value] : config_json_data[config_settings_field_keyword].items()) {
+        for (auto &[key, value] : all_configs.items()) {
             settings_name.push_back(key);
         }
+        /*for (auto &[key, value] : config_json_data[config_settings_field_keyword].items()) {
+            settings_name.push_back(key);
+        }*/
+
         config_get_settings_names_answer answer{std::move(settings_name), convert_request_state.at(request_state::success)};
         send_answer(sock, answer);
     }
@@ -527,8 +669,10 @@ namespace raven
          */
         auto db_id = config_clients_registry_.at(sock.fileno()).get_db_id_from(cfg.id);
         const auto &config_json_data = loaded_configs_.at(db_id.value());
-
-        config_get_settings_answer answer{config_json_data[config_settings_field_keyword], convert_request_state.at(request_state::success)};
+        json::json all_configs = config_json_data[config_settings_field_keyword];
+        _deep_get_all(db_id, all_configs);
+        config_get_settings_answer answer{all_configs, convert_request_state.at(request_state::success)};
+        //config_get_settings_answer answer{config_json_data[config_settings_field_keyword], convert_request_state.at(request_state::success)};
         send_answer(sock, answer);
     }
 
@@ -624,6 +768,10 @@ namespace raven
             {
                 "CONFIG_INCLUDE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
                 this->include_config(json_data, sock);
+            }},
+            {
+                "CONFIG_UNINCLUDE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
+                this->uninclude_config(json_data, sock);
             }},
             {
                 "SETTING_UPDATE",      [this](json::json &json_data, uvw::PipeHandle &sock) {
@@ -893,7 +1041,148 @@ namespace raven
             auto answer = R"({"REQUEST_STATE":"UNKNOWN_ID"})"_json;
             test_client_server_communication(std::move(data), std::move(answer));
         }
-        // TODO more config include tests
+
+        SUBCASE ("self include") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+            request_load["CONFIG_KEY"] = answer_create.config_key.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+
+            client->once<uvw::ConnectEvent>([&request_load](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+                    CHECK(handle.writable());
+                    CHECK(handle.readable());
+                auto request_str = request_load.dump();
+                handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                handle.read();
+            });
+
+            client->on<uvw::DataEvent>(
+                [&expected_answer, &service_](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                    static int step = 0;
+                    static size_t id = 0;
+                    std::string_view data_str(data.data.get(), data.length);
+                    auto json_data = json::json::parse(data_str);
+                    auto json_data_str = json_data.dump();
+                    switch (step)
+                    {
+                        case 0:// load config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42, "SRC": 31})"_json;
+                            id = json_data.at("CONFIG_ID").get<std::size_t>();
+                            request["CONFIG_ID"] = id;
+                            request["SRC"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 1: // include config
+                        {
+                            expected_answer = R"({"REQUEST_STATE":"UNAUTHORIZED"})"_json;
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            sock.close();
+                            break;
+                        }
+                    }
+                    step += 1;
+                });
+
+            client->connect(service_.socket_path_.string());
+            test_run_and_clean_client(service_, loop);
+        };
+
+        SUBCASE ("circular inclusion") {
+            using namespace std::string_literals;
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto answer_create2 = service_.db_.config_create("ma_config2");
+            auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+            request_load["CONFIG_KEY"] = answer_create.config_key.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+            CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+
+            client->once<uvw::ConnectEvent>([&request_load](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+                    CHECK(handle.writable());
+                    CHECK(handle.readable());
+                auto request_str = request_load.dump();
+                handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                handle.read();
+            });
+
+            client->on<uvw::DataEvent>(
+                [&expected_answer, &service_, &answer_create2](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                    static int step = 0;
+                    static size_t id = 0;
+                    static size_t id2 = 0;
+                    std::string_view data_str(data.data.get(), data.length);
+                    auto json_data = json::json::parse(data_str);
+                    auto json_data_str = json_data.dump();
+                    switch (step)
+                    {
+                        case 0:// load config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+                            request["CONFIG_KEY"] = answer_create2.config_key.value();
+                            id = json_data.at("CONFIG_ID").get<std::size_t>();
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 1:// load second config
+                        {
+                            expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE", "CONFIG_ID": 42, "SRC": 31})"_json;
+                            id2 = json_data.at("CONFIG_ID").get<std::size_t>();
+                            request["CONFIG_ID"] = id2;
+                            request["SRC"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 2:// include first into second
+                        {
+                            expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE", "CONFIG_ID": 42, "SRC": 31})"_json;
+                            request["CONFIG_ID"] = id;
+                            request["SRC"] = id2;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 3: // include second into first
+                        {
+                            expected_answer = R"({"REQUEST_STATE":"UNAUTHORIZED"})"_json;
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            sock.close();
+                            break;
+                        }
+                    }
+                    step += 1;
+                });
+
+            client->connect(service_.socket_path_.string());
+            test_run_and_clean_client(service_, loop);
+        };
     }
 
     static void
@@ -1229,7 +1518,6 @@ namespace raven
                     {
                         case 0:// load config
                         {
-                            //std::cout << "AAAAAAA" << std::endl;
                             CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
                                   expected_answer.at("REQUEST_STATE").get<std::string>());
                             auto request = R"({"REQUEST_NAME": "CONFIG_DESTROY", "CONFIG_ID": 42})"_json;
@@ -1238,18 +1526,15 @@ namespace raven
                             auto request_str = request.dump();
                             sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
                             sock.read();
-                            //std::cout << "BBBBBBB" << std::endl;
                             break;
                         }
                         case 1:// destroy config
                         {
-                            //std::cout << "CCCCCCCCC" << std::endl;
                             expected_answer = R"({"REQUEST_STATE":"UNAUTHORIZED"})"_json;
                             CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
                                   expected_answer.at("REQUEST_STATE").get<std::string>());
                             std::cout << "DDDDDDDDDD" << std::endl;
                             sock.close();
-                            //std::cout << "EEEEEEEEE" << std::endl;
                             break;
                         }
                     }
@@ -1582,6 +1867,216 @@ namespace raven
             client->connect(service_.socket_path_.string());
             test_run_and_clean_client(service_, loop);
         }
+
+        SUBCASE("get included setting") {
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto answer_create2 = service_.db_.config_create("ma_config2");
+            auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+            request_load["CONFIG_KEY"] = answer_create.config_key.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+                CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+
+            client->once<uvw::ConnectEvent>([&request_load](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+                    CHECK(handle.writable());
+                    CHECK(handle.readable());
+                auto request_str = request_load.dump();
+                handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                handle.read();
+            });
+
+            client->on<uvw::DataEvent>(
+                [&expected_answer, &answer_create2](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                    static int step = 0;
+                    static uint32_t id = 0;
+                    static uint32_t id2 = 0;
+                    std::string_view data_str(data.data.get(), data.length);
+                    auto json_data = json::json::parse(data_str);
+                    auto json_data_str = json_data.dump();
+                    switch (step)
+                    {
+                        case 0:// load config
+                        {
+                                CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                      expected_answer.at("REQUEST_STATE").get<std::string>());
+                            id = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            auto request = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+                            request["CONFIG_KEY"] = answer_create2.config_key.value();
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 1:// load second config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                      expected_answer.at("REQUEST_STATE").get<std::string>());
+                            id2 = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            auto request = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTINGS_TO_UPDATE": {"titi": "1"}})"_json;
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            // unchanged expected answer
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 2:// update config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42,"SRC": 31})"_json;
+                            request["CONFIG_ID"] = id2;
+                            request["SRC"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 3:// include config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "SETTING_GET","CONFIG_ID": 42,"SETTING_NAME": "titi"})"_json;
+                            request["CONFIG_ID"] = id2;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 4: // get setting
+                        {
+                            expected_answer = R"({"SETTING_VALUE" : "1", "REQUEST_STATE" : "SUCCESS"})"_json;
+                            CHECK(json_data == expected_answer);
+                            sock.close();
+                            break;
+                        }
+                    }
+                    step += 1;
+                });
+
+            client->connect(service_.socket_path_.string());
+            test_run_and_clean_client(service_, loop);
+        }
+
+        SUBCASE("get unincluded setting") {
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto answer_create2 = service_.db_.config_create("ma_config2");
+            auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+            request_load["CONFIG_KEY"] = answer_create.config_key.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+                CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+
+            client->once<uvw::ConnectEvent>([&request_load](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+                    CHECK(handle.writable());
+                    CHECK(handle.readable());
+                auto request_str = request_load.dump();
+                handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                handle.read();
+            });
+
+            client->on<uvw::DataEvent>(
+                [&expected_answer, &answer_create2](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                    static int step = 0;
+                    static uint32_t id = 0;
+                    static uint32_t id2 = 0;
+                    std::string_view data_str(data.data.get(), data.length);
+                    auto json_data = json::json::parse(data_str);
+                    auto json_data_str = json_data.dump();
+                    switch (step)
+                    {
+                        case 0:// load config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                      expected_answer.at("REQUEST_STATE").get<std::string>());
+                            id = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            auto request = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+                            request["CONFIG_KEY"] = answer_create2.config_key.value();
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 1:// load second config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                      expected_answer.at("REQUEST_STATE").get<std::string>());
+                            id2 = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            auto request = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTINGS_TO_UPDATE": {"titi": "1"}})"_json;
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            // unchanged expected answer
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 2:// update config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42,"SRC": 31})"_json;
+                            request["CONFIG_ID"] = id2;
+                            request["SRC"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 3:// include config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "SETTING_GET","CONFIG_ID": 42,"SETTING_NAME": "titi"})"_json;
+                            request["CONFIG_ID"] = id2;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 4:// get setting
+                        {
+                            expected_answer = R"({"SETTING_VALUE" : "1", "REQUEST_STATE" : "SUCCESS"})"_json;
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_UNINCLUDE","CONFIG_ID": 42, "SRC": 31})"_json;
+                            request["CONFIG_ID"] = id2;
+                            request["SRC"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 5:// uninclude config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "SETTING_GET","CONFIG_ID": 42,"SETTING_NAME": "titi"})"_json;
+                            request["CONFIG_ID"] = id2;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 6: // get setting
+                        {
+                            expected_answer = R"({"REQUEST_STATE" : "UNKNOWN_SETTING"})"_json;
+                            CHECK(json_data == expected_answer);
+                            sock.close();
+                            break;
+                        }
+                    }
+                    step += 1;
+                });
+
+            client->connect(service_.socket_path_.string());
+            test_run_and_clean_client(service_, loop);
+        }
     }
 
     TEST_CASE_CLASS ("get_settings_names request")
@@ -1708,10 +2203,105 @@ namespace raven
                             break;
                         }
                         case 2: // get setting
+                        {
                             expected_answer = R"({"SETTINGS_NAMES" : ["lala", "titi"], "REQUEST_STATE" : "SUCCESS"})"_json;
                             CHECK(json_data == expected_answer);
                             sock.close();
                             break;
+                        }
+                    }
+                    step += 1;
+                });
+
+            client->connect(service_.socket_path_.string());
+            test_run_and_clean_client(service_, loop);
+        }
+
+        SUBCASE("get included setting names") {
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto answer_create2 = service_.db_.config_create("ma_config2");
+            auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+            request_load["CONFIG_KEY"] = answer_create.config_key.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+                CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+
+            client->once<uvw::ConnectEvent>([&request_load](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+                    CHECK(handle.writable());
+                    CHECK(handle.readable());
+                auto request_str = request_load.dump();
+                handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                handle.read();
+            });
+
+            client->on<uvw::DataEvent>(
+                [&expected_answer, &answer_create2](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                    static int step = 0;
+                    static uint32_t id = 0;
+                    static uint32_t id2 = 0;
+                    std::string_view data_str(data.data.get(), data.length);
+                    auto json_data = json::json::parse(data_str);
+                    auto json_data_str = json_data.dump();
+                    switch (step)
+                    {
+                        case 0:// load config
+                        {
+                                CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                      expected_answer.at("REQUEST_STATE").get<std::string>());
+                            id = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            auto request = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+                            request["CONFIG_KEY"] = answer_create2.config_key.value();
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 1:// load second config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                      expected_answer.at("REQUEST_STATE").get<std::string>());
+                            id2 = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            auto request = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTINGS_TO_UPDATE": {"titi": "1", "lala": "lala"}})"_json;
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            // unchanged expected answer
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 2:// update config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42,"SRC": 31})"_json;
+                            request["CONFIG_ID"] = id2;
+                            request["SRC"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 3:// include config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_GET_SETTINGS_NAMES","CONFIG_ID": 42})"_json;
+                            request["CONFIG_ID"] = id2;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 4: // get setting
+                        {
+                            expected_answer = R"({"SETTINGS_NAMES" : ["lala", "titi"], "REQUEST_STATE" : "SUCCESS"})"_json;
+                            CHECK(json_data == expected_answer);
+                            sock.close();
+                            break;
+                        }
                     }
                     step += 1;
                 });
@@ -1849,6 +2439,99 @@ namespace raven
                             CHECK(json_data == expected_answer);
                             sock.close();
                             break;
+                    }
+                    step += 1;
+                });
+
+            client->connect(service_.socket_path_.string());
+            test_run_and_clean_client(service_, loop);
+        }
+
+        SUBCASE("get included setting names") {
+            service service_{std::filesystem::current_path() / "albinos_service_test_internal.db"};
+            auto answer_create = service_.db_.config_create("ma_config");
+            auto answer_create2 = service_.db_.config_create("ma_config2");
+            auto request_load = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+            request_load["CONFIG_KEY"] = answer_create.config_key.value();
+            auto expected_answer = R"({"REQUEST_STATE":"SUCCESS"})"_json;
+                CHECK_FALSE(service_.create_socket());
+            auto loop = uvw::Loop::getDefault();
+            auto client = loop->resource<uvw::PipeHandle>();
+
+            client->once<uvw::ConnectEvent>([&request_load](const uvw::ConnectEvent &, uvw::PipeHandle &handle) {
+                    CHECK(handle.writable());
+                    CHECK(handle.readable());
+                auto request_str = request_load.dump();
+                handle.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                handle.read();
+            });
+
+            client->on<uvw::DataEvent>(
+                [&expected_answer, &answer_create2](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+                    static int step = 0;
+                    static uint32_t id = 0;
+                    static uint32_t id2 = 0;
+                    std::string_view data_str(data.data.get(), data.length);
+                    auto json_data = json::json::parse(data_str);
+                    auto json_data_str = json_data.dump();
+                    switch (step)
+                    {
+                        case 0:// load config
+                        {
+                                CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                      expected_answer.at("REQUEST_STATE").get<std::string>());
+                            id = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            auto request = R"({"REQUEST_NAME": "CONFIG_LOAD", "CONFIG_KEY" : 42})"_json;
+                            request["CONFIG_KEY"] = answer_create2.config_key.value();
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 1:// load second config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                      expected_answer.at("REQUEST_STATE").get<std::string>());
+                            id2 = json_data.at("CONFIG_ID").get<std::uint32_t>();
+                            auto request = R"({"REQUEST_NAME": "SETTING_UPDATE","CONFIG_ID": 42,"SETTINGS_TO_UPDATE": {"titi": "1", "lala": "lala"}})"_json;
+                            request["CONFIG_ID"] = id;
+                            auto request_str = request.dump();
+                            // unchanged expected answer
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 2:// update config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_INCLUDE","CONFIG_ID": 42,"SRC": 31})"_json;
+                            request["CONFIG_ID"] = id2;
+                            request["SRC"] = id;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 3:// include config
+                        {
+                            CHECK(json_data.at("REQUEST_STATE").get<std::string>() ==
+                                  expected_answer.at("REQUEST_STATE").get<std::string>());
+                            auto request = R"({"REQUEST_NAME": "CONFIG_GET_SETTINGS","CONFIG_ID": 42})"_json;
+                            request["CONFIG_ID"] = id2;
+                            auto request_str = request.dump();
+                            sock.write(request_str.data(), static_cast<unsigned int>(request_str.size()));
+                            sock.read();
+                            break;
+                        }
+                        case 4: // get setting
+                        {
+                            expected_answer = R"({"SETTINGS" : {"titi": "1", "lala": "lala"}, "REQUEST_STATE" : "SUCCESS"})"_json;
+                            CHECK(json_data == expected_answer);
+                            sock.close();
+                            break;
+                        }
                     }
                     step += 1;
                 });
