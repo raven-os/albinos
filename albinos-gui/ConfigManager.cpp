@@ -115,8 +115,34 @@ void ConfigManager::fetchConfig(std::string const &name)
     Albinos::Setting *settings;
 //    size_t aliasesSize;
 //    Albinos::Alias *aliases;
+    Albinos::Key key;
 
     gint y = 0;
+    if (Albinos::getConfigKey(p_configs[name], &key) == Albinos::SUCCESS) {
+        gtk_grid_insert_row(GTK_GRID(p_configDisplay), y);
+        GtkWidget *titleKeyLabel = gtk_label_new(std::string("RW key :").c_str());
+        GtkWidget *keyLabel = gtk_label_new(std::string(key.data, key.size).c_str());
+        gtk_label_set_selectable(GTK_LABEL(keyLabel), TRUE);
+        gtk_grid_attach(GTK_GRID(p_configDisplay), titleKeyLabel, 0, y, 1, 1);
+        ++y;
+        gtk_grid_insert_row(GTK_GRID(p_configDisplay), y);
+        gtk_grid_attach(GTK_GRID(p_configDisplay), keyLabel, 0, y, 1, 1);
+        delete key.data;
+        ++y;
+    }
+
+    if (Albinos::getReadOnlyConfigKey(p_configs[name], &key) == Albinos::SUCCESS) {
+        gtk_grid_insert_row(GTK_GRID(p_configDisplay), y);
+        GtkWidget *titleKeyLabel = gtk_label_new(std::string("RO key :").c_str());
+        GtkWidget *keyLabel = gtk_label_new(std::string(key.data, key.size).c_str());
+        gtk_label_set_selectable(GTK_LABEL(keyLabel), TRUE);
+        gtk_grid_attach(GTK_GRID(p_configDisplay), titleKeyLabel, 0, y, 1, 1);
+        ++y;
+        gtk_grid_insert_row(GTK_GRID(p_configDisplay), y);
+        gtk_grid_attach(GTK_GRID(p_configDisplay), keyLabel, 0, y, 1, 1);
+        delete key.data;
+        ++y;
+    }
 
     if (Albinos::getLocalSettings(p_configs[name], &settings, &settingsSize) == Albinos::SUCCESS) {
         for (unsigned i = 0 ; i < settingsSize ; ++i, ++y) {
@@ -134,6 +160,7 @@ void ConfigManager::fetchConfig(std::string const &name)
             gtk_grid_attach(GTK_GRID(settingBox), delBut, 1, 0, 1, 1);
             g_signal_connect(G_OBJECT(delBut), "clicked", G_CALLBACK(delButton), this);
             GtkWidget *name = gtk_label_new(settings[i].name);
+            gtk_label_set_selectable(GTK_LABEL(name), TRUE);
             gtk_grid_attach(GTK_GRID(settingBox), name, 2, 0, 1, 1);
             GtkWidget *value = gtk_entry_new_with_buffer(gtk_entry_buffer_new(settings[i].value, p_fetchedSettings[settings[i].name].size()));
             gtk_grid_attach(GTK_GRID(settingBox), value, 3, 0, 1, 1);
